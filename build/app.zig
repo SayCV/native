@@ -7,6 +7,10 @@ const std = @import("std");
 const builtin = @import("builtin");
 const json_to_zon = @import("../src/tooling/json_to_zon.zig");
 
+/// Zig 0.17 removed `Build.sysroot`; keep the discovered Apple/Android sysroot
+/// override in a module-local so the SDK-dependent branches still compile.
+var sysroot_override: ?[]const u8 = null;
+
 /// Canonicalize a generated file by its CONTENT before another build step
 /// consumes it. `std.Build.Step.Run` normally places outputs under a cache
 /// directory keyed by every declared input. That is correct for the producer,
@@ -163,7 +167,7 @@ fn detectCoreTree(b: *std.Build, app_root: []const u8) CoreTree {
 }
 
 fn appFileExists(b: *std.Build, app_root: []const u8, sub_path: []const u8) bool {
-    b.build_root.handle.access(b.graph.io, appPath(b, app_root, sub_path), .{}) catch return false;
+    std.Io.Dir.cwd().access(b.graph.io, appPath(b, app_root, sub_path), .{}) catch return false;
     return true;
 }
 
@@ -185,7 +189,7 @@ fn appManifestModule(b: *std.Build, app_root: []const u8, manifest_name: []const
     if (!json_to_zon.isJsonPath(path)) {
         return b.createModule(.{ .root_source_file = b.path(path) });
     }
-    const source = b.build_root.handle.readFileAlloc(b.graph.io, path, b.allocator, .limited(1024 * 1024)) catch
+    const source = std.Io.Dir.cwd().readFileAlloc(b.graph.io, path, b.allocator, .limited(1024 * 1024)) catch
         @panic("cannot read app.json");
     const zon = json_to_zon.convertAlloc(b.allocator, source) catch |err| switch (err) {
         error.NullNotAllowed => @panic("app.json cannot contain null values; omit optional fields instead"),
@@ -262,7 +266,7 @@ pub fn isRootMarkupSourcePath(path: []const u8) bool {
 /// `windows(model)` owns dynamic liveness.
 fn collectTsWindowViews(b: *std.Build, app_root: []const u8) TsWindowViews {
     const windows_path = appPath(b, app_root, "src/windows");
-    var dir = b.build_root.handle.openDir(b.graph.io, windows_path, .{ .iterate = true }) catch return .{ .views = &.{}, .sources = &.{} };
+    var dir = std.Io.Dir.cwd().openDir(b.graph.io, windows_path, .{ .iterate = true }) catch return .{ .views = &.{}, .sources = &.{} };
     defer dir.close(b.graph.io);
     var walker = dir.walk(b.allocator) catch return .{ .views = &.{}, .sources = &.{} };
     defer walker.deinit();
@@ -318,7 +322,7 @@ fn collectTsWindowViews(b: *std.Build, app_root: []const u8) TsWindowViews {
 /// resolver without changing the separate window resolver root.
 fn collectAppMarkupSources(b: *std.Build, app_root: []const u8, window_views: TsWindowViews) TsAppMarkupSources {
     const src_path = appPath(b, app_root, "src");
-    var dir = b.build_root.handle.openDir(b.graph.io, src_path, .{ .iterate = true }) catch
+    var dir = std.Io.Dir.cwd().openDir(b.graph.io, src_path, .{ .iterate = true }) catch
         return .{ .files = &.{}, .sources = &.{} };
     defer dir.close(b.graph.io);
     var walker = dir.walk(b.allocator) catch return .{ .files = &.{}, .sources = &.{} };
@@ -860,7 +864,7 @@ const TsToolingConsumer = enum { app_core, sqlite_schema };
 /// frontend and relational schema generator. Keep app-shape assertions out
 /// of this helper: a Zig core may use SQLite without carrying a markup view.
 fn tsToolingPreflight(b: *std.Build, dep: *std.Build.Dependency, consumer: TsToolingConsumer) []const u8 {
-    const node = b.findProgram(&.{"node"}, &.{}) catch switch (consumer) {
+    const node = b.findProgram(.{ .names = &.{"node"} }) orelse switch (consumer) {
         .app_core => @panic("\nbuilding a TypeScript app core needs node on PATH (the @native-sdk/core frontend checks the" ++
             " core at build time; the binary you ship carries no JS runtime).\nInstall Node.js 24+" ++
             " — https://nodejs.org or `brew install node` — and re-run.\n"),
@@ -1381,7 +1385,7 @@ fn sqliteMigrationsStage(b: *std.Build, dep: *std.Build.Dependency, app_root: []
 }
 
 fn addAppSqlDirInputs(b: *std.Build, run: *std.Build.Step.Run, src_path: []const u8) void {
-    var dir = b.build_root.handle.openDir(b.graph.io, src_path, .{ .iterate = true }) catch return;
+    var dir = std.Io.Dir.cwd().openDir(b.graph.io, src_path, .{ .iterate = true }) catch return;
     defer dir.close(b.graph.io);
     var walker = dir.walk(b.allocator) catch return;
     defer walker.deinit();
@@ -1435,7 +1439,7 @@ fn addTsDirInputs(b: *std.Build, sdk_builder: *std.Build, transpile: *std.Build.
 /// Declare every .ts file under the app's src/ (recursively — a core may
 /// split into subdirectories) as a file input of the transpile step.
 fn addAppTsDirInputs(b: *std.Build, transpile: *std.Build.Step.Run, src_path: []const u8) void {
-    var dir = b.build_root.handle.openDir(b.graph.io, src_path, .{ .iterate = true }) catch return;
+    var dir = std.Io.Dir.cwd().openDir(b.graph.io, src_path, .{ .iterate = true }) catch return;
     defer dir.close(b.graph.io);
     var walker = dir.walk(b.allocator) catch return;
     defer walker.deinit();
@@ -1450,7 +1454,7 @@ fn addAppTsDirInputs(b: *std.Build, transpile: *std.Build.Step.Run, src_path: []
 /// scratch tree. `src/services/` is a separate compiler class and `.d.ts`
 /// files are declarations for editor/provider use, not scriptc source inputs.
 fn addAppCoreTsDirInputs(b: *std.Build, stage: *std.Build.Step.Run, src_path: []const u8) void {
-    var dir = b.build_root.handle.openDir(b.graph.io, src_path, .{ .iterate = true }) catch return;
+    var dir = std.Io.Dir.cwd().openDir(b.graph.io, src_path, .{ .iterate = true }) catch return;
     defer dir.close(b.graph.io);
     var walker = dir.walk(b.allocator) catch return;
     defer walker.deinit();
@@ -1479,7 +1483,7 @@ pub fn addStagedCoreSdkInputs(b: *std.Build, sdk_builder: *std.Build, stage: *st
 
 fn appHasServiceFiles(b: *std.Build, app_root: []const u8) bool {
     const services_path = appPath(b, app_root, "src/services");
-    var dir = b.build_root.handle.openDir(b.graph.io, services_path, .{ .iterate = true }) catch return false;
+    var dir = std.Io.Dir.cwd().openDir(b.graph.io, services_path, .{ .iterate = true }) catch return false;
     defer dir.close(b.graph.io);
     var walker = dir.walk(b.allocator) catch return false;
     defer walker.deinit();
@@ -1727,7 +1731,7 @@ fn addMobileLibWithTarget(b: *std.Build, dep: *std.Build.Dependency, target: std
 /// TypeScript archives (see the call site above). Runs under node like the
 /// rest of the TypeScript lane's drivers.
 fn mergeMobileArchive(b: *std.Build, dep: *std.Build.Dependency, lib: *std.Build.Step.Compile, name: []const u8) std.Build.LazyPath {
-    const node = b.findProgram(&.{"node"}, &.{}) catch
+    const node = b.findProgram(.{ .names = &.{"node"} }) orelse
         @panic("\nmerging the mobile TypeScript archives needs node on PATH (the TypeScript core lane already requires it).\n");
     const merge = b.addSystemCommand(&.{node});
     merge.addFileArg(dep.path("packages/core/scripts/merge_static_archives.mjs"));
@@ -2284,8 +2288,8 @@ fn nativeSdkTarget(b: *std.Build) std.Build.ResolvedTarget {
     const target = b.standardTargetOptions(.{});
     if (target.result.os.tag != .macos) return target;
 
-    if (b.sysroot == null) {
-        b.sysroot = macosSdkPath(b) orelse b.sysroot;
+    if (sysroot_override == null) {
+        sysroot_override = macosSdkPath(b) orelse sysroot_override;
     }
 
     var query = target.query;
@@ -2313,7 +2317,7 @@ const sqlite_c_defines = [_][]const u8{
 /// configure under a mobile -Dtarget (the mobile e2e battery).
 pub fn sqliteCFlags(b: *std.Build, target: std.Build.ResolvedTarget) []const []const u8 {
     if (target.result.os.tag == .ios) {
-        const sysroot = b.sysroot orelse iosSdkPath(b, target.result.abi == .simulator) orelse
+        const sysroot = sysroot_override orelse iosSdkPath(b, target.result.abi == .simulator) orelse
             std.debug.panic("a store-capable iOS library needs the Apple SDK; install Xcode or pass --sysroot <iphone SDK path>", .{});
         return b.dupeStrings(&.{
             sqlite_c_defines[0],
@@ -2330,7 +2334,7 @@ pub fn sqliteCFlags(b: *std.Build, target: std.Build.ResolvedTarget) []const []c
         });
     }
     if (target.result.abi.isAndroid()) {
-        const sysroot = b.sysroot orelse androidNdkSysrootPath(b) orelse
+        const sysroot = sysroot_override orelse androidNdkSysrootPath(b) orelse
             std.debug.panic("a store-capable Android library needs the NDK; set ANDROID_NDK_ROOT or ANDROID_HOME, or pass --sysroot <NDK sysroot>", .{});
         const triple = target.result.linuxTriple(b.allocator) catch @panic("out of memory");
         return b.dupeStrings(&.{
@@ -2609,8 +2613,8 @@ fn linkPlatform(b: *std.Build, dep: *std.Build.Dependency, target: std.Build.Res
     if (platform == .macos) {
         switch (web_engine) {
             .system => {
-                const sdk_include = if (b.sysroot) |sysroot| b.fmt("-I{s}/usr/include", .{sysroot}) else "";
-                const flags: []const []const u8 = if (b.sysroot) |sysroot| &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC", "-mmacosx-version-min=11.0", "-isysroot", sysroot, sdk_include } else &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC", "-mmacosx-version-min=11.0" };
+                const sdk_include = if (sysroot_override) |sysroot| b.fmt("-I{s}/usr/include", .{sysroot}) else "";
+                const flags: []const []const u8 = if (sysroot_override) |sysroot| &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC", "-mmacosx-version-min=11.0", "-isysroot", sysroot, sdk_include } else &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC", "-mmacosx-version-min=11.0" };
                 app_mod.addCSourceFile(.{ .file = dep.path("src/platform/macos/appkit_host.m"), .flags = flags });
                 app_mod.linkFramework("WebKit", .{});
             },
@@ -2626,8 +2630,8 @@ fn linkPlatform(b: *std.Build, dep: *std.Build.Dependency, target: std.Build.Res
                 // The SDK's usr/include must stay a system include dir (searched after zig's
                 // bundled libc++/libc headers). A plain -I shadows libc++'s <string.h>/<math.h>
                 // wrappers in ObjC++ and surfaces SDK nullability gaps as a diagnostic flood.
-                const sdk_include = if (b.sysroot) |sysroot| b.fmt("-isystem{s}/usr/include", .{sysroot}) else "";
-                const flags: []const []const u8 = if (b.sysroot) |sysroot| &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC++", "-std=c++17", "-stdlib=libc++", "-mmacosx-version-min=11.0", "-isysroot", sysroot, sdk_include, include_arg, define_arg } else &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC++", "-std=c++17", "-stdlib=libc++", "-mmacosx-version-min=11.0", include_arg, define_arg };
+                const sdk_include = if (sysroot_override) |sysroot| b.fmt("-isystem{s}/usr/include", .{sysroot}) else "";
+                const flags: []const []const u8 = if (sysroot_override) |sysroot| &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC++", "-std=c++17", "-stdlib=libc++", "-mmacosx-version-min=11.0", "-isysroot", sysroot, sdk_include, include_arg, define_arg } else &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC++", "-std=c++17", "-stdlib=libc++", "-mmacosx-version-min=11.0", include_arg, define_arg };
                 app_mod.addCSourceFile(.{ .file = dep.path("src/platform/macos/cef_host.mm"), .flags = flags });
                 app_mod.addObjectFile(b.path(b.fmt("{s}/libcef_dll_wrapper/libcef_dll_wrapper.a", .{cef_dir})));
                 app_mod.linkFramework("Chromium Embedded Framework", .{});
@@ -2790,7 +2794,7 @@ fn linkPlatform(b: *std.Build, dep: *std.Build.Dependency, target: std.Build.Res
 /// framework/library lookup and runtime-search policy.
 fn addPlatformLinkSearchPaths(b: *std.Build, platform: PlatformOption, web_engine: WebEngineOption, cef_dir: []const u8, mod: *std.Build.Module) void {
     if (platform == .macos) {
-        if (b.sysroot) |sysroot| {
+        if (sysroot_override) |sysroot| {
             mod.addFrameworkPath(.{ .cwd_relative = b.pathJoin(&.{ sysroot, "System/Library/Frameworks" }) });
         }
         if (web_engine == .chromium) {
@@ -2979,12 +2983,12 @@ fn appManifestBuildConfig(b: *std.Build, app_root: []const u8, manifest_name: []
     // the web layer (see AppManifestBuildConfig): a shape mismatch here
     // is not proof the app declares no web use.
     const fallback: AppManifestBuildConfig = .{ .web_declaration = .unreadable_manifest };
-    const source = b.build_root.handle.readFileAlloc(b.graph.io, appPath(b, app_root, manifest_name), b.allocator, .limited(1024 * 1024)) catch return fallback;
+    const source = std.Io.Dir.cwd().readFileAlloc(b.graph.io, appPath(b, app_root, manifest_name), b.allocator, .limited(1024 * 1024)) catch return fallback;
     @setEvalBranchQuota(2000);
     const raw = if (std.ascii.eqlIgnoreCase(std.fs.path.extension(manifest_name), ".json"))
         std.json.parseFromSliceLeaky(InferenceManifest, b.allocator, source, .{ .ignore_unknown_fields = true }) catch return fallback
     else zon: {
-        const source_z = b.allocator.dupeZ(u8, source) catch return fallback;
+        const source_z = b.allocator.dupeSentinel(u8, source, 0) catch return fallback;
         break :zon std.zon.parse.fromSliceAlloc(InferenceManifest, b.allocator, source_z, null, .{ .ignore_unknown_fields = true }) catch return fallback;
     };
     // `.core_compiler` names the one lane there is; validated here so

@@ -1828,7 +1828,7 @@ fn stringLessThan(_: void, a: []const u8, b: []const u8) bool {
 /// Parse a serialized contract artifact. The result's slices are
 /// allocated from `allocator` (hand it an arena).
 pub fn parseArtifact(allocator: std.mem.Allocator, source: []const u8) error{ OutOfMemory, ParseZon }!Contract {
-    const source_z = try allocator.dupeZ(u8, source);
+    const source_z = try allocator.dupeSentinel(u8, source, 0);
     return std.zon.parse.fromSliceAlloc(Contract, allocator, source_z, null, .{});
 }
 

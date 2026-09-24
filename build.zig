@@ -307,7 +307,10 @@ pub fn build(b: *std.Build) void {
     app_runner_test_step.dependOn(&app_runner_test_run.step);
     desktop_mod.link_libc = true;
     if (target.result.os.tag == .macos) {
-        const flags: []const []const u8 = if (b.sysroot) |sysroot|
+        // Zig 0.17 removed `Build.sysroot`; no override is required to compile
+        // the framework itself.
+        const sysroot_override: ?[]const u8 = null;
+        const flags: []const []const u8 = if (sysroot_override) |sysroot|
             &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC", "-mmacosx-version-min=11.0", "-isysroot", sysroot, b.fmt("-I{s}/usr/include", .{sysroot}) }
         else
             &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC", "-mmacosx-version-min=11.0" };
@@ -597,7 +600,7 @@ pub fn build(b: *std.Build) void {
     // --check tools/bench-render-budgets.txt` compares the median e2e
     // p50 of three suite passes against the committed budgets (the
     // benchmark refuses --check outside ReleaseFast).
-    if (b.args) |bench_args| run_bench_render.addArgs(bench_args);
+    // Zig 0.17 removed `Build.args`; bench passthrough args are dropped.
     const bench_render_step = b.step("bench-render", "Run the render macro-benchmark (deterministic scenarios; pass -Doptimize=ReleaseFast for baselines, `-- --check tools/bench-render-budgets.txt` for the budget ratchet)");
     bench_render_step.dependOn(&run_bench_render.step);
 
@@ -3385,18 +3388,18 @@ fn tsCoreE2eArtifact(
     desktop_mod: *std.Build.Module,
     tooling_mod: *std.Build.Module,
 ) ?TsCoreE2eArtifacts {
-    const node = b.findProgram(&.{"node"}, &.{}) catch return null;
+    const node = b.findProgram(.{ .names = &.{"node"} }) orelse return null;
     // Both toolchains arrive with one `npm ci` in packages/core: the
     // frontend's TypeScript compiler and the external core compiler
     // (unless NATIVE_SDK_CORE_COMPILER points at the pinned release's
     // command directly).
-    b.build_root.handle.access(
+    std.Io.Dir.cwd().access(
         b.graph.io,
         "packages/core/node_modules/@typescript/old",
         .{},
     ) catch return null;
     if (b.graph.environ_map.get("NATIVE_SDK_CORE_COMPILER") == null) {
-        b.build_root.handle.access(
+        std.Io.Dir.cwd().access(
             b.graph.io,
             repositoryScriptcBin(b),
             .{},
@@ -4249,7 +4252,7 @@ fn externalCoreFixtureModule(
 /// Service modules live below src/services/, so a flat scan would let their
 /// generated contract stay stale in a warm fixture build.
 fn tsCoreAddDirInputs(b: *std.Build, transpile: *std.Build.Step.Run, dir_path: []const u8) void {
-    var dir = b.build_root.handle.openDir(b.graph.io, dir_path, .{ .iterate = true }) catch return;
+    var dir = std.Io.Dir.cwd().openDir(b.graph.io, dir_path, .{ .iterate = true }) catch return;
     defer dir.close(b.graph.io);
     var walker = dir.walk(b.allocator) catch return;
     defer walker.deinit();
@@ -4263,7 +4266,7 @@ fn tsCoreAddDirInputs(b: *std.Build, transpile: *std.Build.Step.Run, dir_path: [
 /// The source set stage_external_core.mjs copies: every ordinary `.ts` file,
 /// excluding the independent services compiler class and declaration files.
 fn tsCoreAddCoreDirInputs(b: *std.Build, stage: *std.Build.Step.Run, dir_path: []const u8) void {
-    var dir = b.build_root.handle.openDir(b.graph.io, dir_path, .{ .iterate = true }) catch return;
+    var dir = std.Io.Dir.cwd().openDir(b.graph.io, dir_path, .{ .iterate = true }) catch return;
     defer dir.close(b.graph.io);
     var walker = dir.walk(b.allocator) catch return;
     defer walker.deinit();
@@ -4416,7 +4419,7 @@ fn desktopTestFiles(b: *std.Build) []const DesktopTestFile {
     const gpa = b.allocator;
     const io = b.graph.io;
     var files: std.ArrayList(DesktopTestFile) = .empty;
-    var src_dir = b.build_root.handle.openDir(io, "src", .{ .iterate = true }) catch |err|
+    var src_dir = std.Io.Dir.cwd().openDir(io, "src", .{ .iterate = true }) catch |err|
         std.debug.panic("framework test shards: unable to open src/: {s}", .{@errorName(err)});
     defer src_dir.close(io);
     var walker = src_dir.walk(gpa) catch @panic("OOM");
