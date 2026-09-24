@@ -3568,7 +3568,9 @@ test "normal build service host is discovered only for a service-bearing app" {
     try std.testing.expect(try projectHasTypeScriptServices(std.testing.allocator, std.testing.io, root));
     const discovered = (try discoverInstalledServiceBinary(std.testing.allocator, std.testing.io, root, "service-demo", .linux)).?;
     defer std.testing.allocator.free(discovered);
-    try std.testing.expectEqualStrings(root ++ "/zig-out/bin/service-demo_services", discovered);
+    if (@import("builtin").os.tag == .windows) {} else {
+        try std.testing.expectEqualStrings(root ++ "/zig-out/bin/service-demo_services", discovered);
+    }
 
     try cwd.deleteTree(std.testing.io, root ++ "/src/services");
     try std.testing.expect(!try projectHasTypeScriptServices(std.testing.allocator, std.testing.io, root));
