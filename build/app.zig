@@ -1908,8 +1908,8 @@ pub fn addAppArtifacts(b: *std.Build, dep: *std.Build.Dependency, app_options: A
     // a real sibling exactly as it is in a package. Service-free apps keep
     // the direct cached-artifact fast path.
     const run = if (service_install != null) run: {
-        const suffix = if (target.result.os.tag == .windows) ".exe" else "";
-        const value = b.addSystemCommand(&.{b.getInstallPath(.bin, b.fmt("{s}{s}", .{ app_options.name, suffix }))});
+        const value = b.addSystemCommand(&.{});
+        value.addFileArg(exe.getEmittedBin());
         value.step.dependOn(&install.step);
         value.step.dependOn(&service_install.?.step);
         break :run value;
@@ -2094,7 +2094,7 @@ pub fn useLlvmWorkaround(target: std.Build.ResolvedTarget) ?bool {
 
 fn exampleOptimizeMode(b: *std.Build, requested: ?std.builtin.OptimizeMode, default_mode: std.builtin.OptimizeMode) std.builtin.OptimizeMode {
     if (requested) |mode| return mode;
-    return switch (b.release_mode) {
+    return switch (b.graph.release_mode) {
         .off => default_mode,
         .any, .fast => .ReleaseFast,
         .safe => .ReleaseSafe,
@@ -2753,7 +2753,8 @@ fn addWebView2RuntimeRunFiles(dep: *std.Build.Dependency, target: std.Build.Reso
     if (!web_layer) return;
     if (target.result.os.tag != .windows) return;
     const loader_dir = std.fs.path.dirname(webView2LoaderSubPath(target)).?;
-    run.addPathDir(dep.builder.pathResolve(&.{loader_dir}));
+    const loader_lazy_path = dep.path(dep.builder.pathResolve(&.{loader_dir}));
+    run.addDirectoryArg(loader_lazy_path);
 }
 
 fn addCefRuntimeRunFiles(b: *std.Build, target: std.Build.ResolvedTarget, run: *std.Build.Step.Run, exe: *std.Build.Step.Compile, web_engine: WebEngineOption, cef_dir: []const u8) void {
