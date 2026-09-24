@@ -503,9 +503,9 @@ pub const Runtime = struct {
     /// builds that overflows default thread stacks, so every embedding
     /// constructs through a pointer.
     pub fn initAt(self: *Runtime, options: Options) void {
-        inline for (@typeInfo(Runtime).@"struct".fields) |field| {
-            if (comptime fieldHasSmallDefault(field)) {
-                @field(self, field.name) = @as(*const field.type, @ptrCast(@alignCast(field.default_value_ptr.?))).*;
+        inline for (@typeInfo(Runtime).@"struct".field_names, @typeInfo(Runtime).@"struct".field_types, @typeInfo(Runtime).@"struct".field_attrs) |field_name, field_type, field_attr| {
+            if (comptime fieldHasSmallDefault(field_type)) {
+                @field(self, field_name) = @as(*const field_type, @ptrCast(@alignCast(field_attr.default_value_ptr.?))).*;
             }
         }
         self.options = options;

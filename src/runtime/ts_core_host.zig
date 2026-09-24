@@ -3208,13 +3208,13 @@ pub fn TsCoreHost(comptime core: type) type {
                     const info = @typeInfo(arm.type);
                     if (comptime info == .@"struct" and info.@"struct".fields.len == 3) {
                         var payload: arm.type = undefined;
-                        inline for (info.@"struct".fields) |field| {
-                            if (comptime std.mem.eql(u8, field.name, "exists") and field.type == bool) {
-                                @field(payload, field.name) = result.exists;
-                            } else if (comptime std.mem.eql(u8, field.name, "size") and (field.type == i64 or field.type == u64 or field.type == f64)) {
-                                @field(payload, field.name) = if (comptime field.type == f64) @floatFromInt(result.total) else @intCast(result.total);
-                            } else if (comptime std.mem.eql(u8, field.name, "mtimeMs") and (field.type == i64 or field.type == u64 or field.type == f64)) {
-                                @field(payload, field.name) = if (comptime field.type == f64) @floatFromInt(result.mtime_ms) else @intCast(result.mtime_ms);
+                        inline for (info.@"struct".field_names, info.@"struct".field_types) |field_name, field_type| {
+                            if (comptime std.mem.eql(u8, field_name, "exists") and field_type == bool) {
+                                @field(payload, field_name) = result.exists;
+                            } else if (comptime std.mem.eql(u8, field_name, "size") and (field_type == i64 or field_type == u64 or field_type == f64)) {
+                                @field(payload, field_name) = if (comptime field_type == f64) @floatFromInt(result.total) else @intCast(result.total);
+                            } else if (comptime std.mem.eql(u8, field_name, "mtimeMs") and (field_type == i64 or field_type == u64 or field_type == f64)) {
+                                @field(payload, field_name) = if (comptime field_type == f64) @floatFromInt(result.mtime_ms) else @intCast(result.mtime_ms);
                             } else @panic("ts core host: stat_file ok arm has the wrong fields");
                         }
                         return @unionInit(Msg, arm.name, payload);

@@ -215,12 +215,12 @@ fn describeGroupSeen(comptime T: type, comptime seen: []const type) Group {
     comptime {
         var scalars: []const Scalar = &.{};
         var groups: []const NamedGroup = &.{};
-        for (@typeInfo(T).@"struct".fields) |field| {
-            if (reflect.supportedScalar(field.type)) {
+        for (@typeInfo(T).@"struct".field_names, @typeInfo(T).@"struct".field_types) |field_name, field_type| {
+            if (reflect.supportedScalar(field_type)) {
                 scalars = scalars ++ &[_]Scalar{.{
-                    .name = field.name,
-                    .kind = reflect.scalarKindOf(field.type),
-                    .type_name = @typeName(field.type),
+                    .name = field_name,
+                    .kind = reflect.scalarKindOf(field_type),
+                    .type_name = @typeName(field_type),
                 }};
                 continue;
             }
@@ -229,22 +229,22 @@ fn describeGroupSeen(comptime T: type, comptime seen: []const type) Group {
             // cycle (unlike by-value structs), so already-described
             // types stop the walk — the engines resolve such paths
             // segment by segment and never recurse into the type graph.
-            const Nested = reflect.Pointee(field.type);
+            const Nested = reflect.Pointee(field_type);
             if (@typeInfo(Nested) == .@"struct" and !typeListed(Nested, seen ++ &[_]type{T})) {
                 groups = groups ++ &[_]NamedGroup{.{
-                    .name = field.name,
+                    .name = field_name,
                     .type_name = @typeName(Nested),
                     .group = describeGroupSeen(Nested, seen ++ &[_]type{T}),
                 }};
             }
         }
-        for (@typeInfo(T).@"struct".decls) |decl| {
-            const DeclType = @TypeOf(@field(T, decl.name));
+        for (@typeInfo(T).@"struct".decl_names) |decl| {
+            const DeclType = @TypeOf(@field(T, decl));
             if (@typeInfo(DeclType) != .@"fn") continue;
             const info = @typeInfo(DeclType).@"fn";
             if (reflect.isZeroArgFn(T, DeclType) and reflect.supportedScalar(info.return_type.?)) {
                 scalars = scalars ++ &[_]Scalar{.{
-                    .name = decl.name,
+                    .name = decl,
                     .kind = reflect.scalarKindOf(info.return_type.?),
                     .type_name = @typeName(info.return_type.?),
                     .fn_backed = true,
@@ -253,7 +253,7 @@ fn describeGroupSeen(comptime T: type, comptime seen: []const type) Group {
             }
             if (reflect.isArenaScalarFn(T, DeclType) and reflect.supportedScalar(info.return_type.?)) {
                 scalars = scalars ++ &[_]Scalar{.{
-                    .name = decl.name,
+                    .name = decl,
                     .kind = reflect.scalarKindOf(info.return_type.?),
                     .type_name = @typeName(info.return_type.?),
                     .arena = true,
@@ -290,18 +290,18 @@ fn describeItem(comptime Item: type) Iterable {
 fn describeIterables(comptime Model: type) []const Iterable {
     comptime {
         var iterables: []const Iterable = &.{};
-        for (@typeInfo(Model).@"struct".fields) |field| {
-            if (reflect.sliceElement(field.type)) |Item| {
+        for (@typeInfo(Model).@"struct".field_names, @typeInfo(Model).@"struct".field_types) |field_name, field_type| {
+            if (reflect.sliceElement(field_type)) |Item| {
                 var entry = describeItem(Item);
-                entry.name = field.name;
+                entry.name = field_name;
                 iterables = iterables ++ &[_]Iterable{entry};
             }
         }
-        for (@typeInfo(Model).@"struct".decls) |decl| {
-            const DeclType = @TypeOf(@field(Model, decl.name));
+        for (@typeInfo(Model).@"struct".decl_namess) |decl| {
+            const DeclType = @TypeOf(@field(Model, decl));
             if (reflect.sliceElement(DeclType)) |Item| {
                 var entry = describeItem(Item);
-                entry.name = decl.name;
+                entry.name = decl;
                 iterables = iterables ++ &[_]Iterable{entry};
                 continue;
             }
@@ -310,7 +310,7 @@ fn describeIterables(comptime Model: type) []const Iterable {
             const Item = reflect.sliceElement(Return) orelse continue;
             if (reflect.isItemFn(DeclType, Item, false) or reflect.isItemFn(DeclType, Item, true)) {
                 var entry = describeItem(Item);
-                entry.name = decl.name;
+                entry.name = decl;
                 entry.fn_backed = true;
                 iterables = iterables ++ &[_]Iterable{entry};
             }
@@ -322,11 +322,11 @@ fn describeIterables(comptime Model: type) []const Iterable {
 fn describeMsgs(comptime Msg: type, comptime specials: Specials) []const MsgTag {
     comptime {
         var tags: []const MsgTag = &.{};
-        for (@typeInfo(Msg).@"union".fields) |field| {
+        for (@typeInfo(Msg).@"union".field_names, @typeInfo(Msg).@"union".field_types) |field_name, field_type| {
             tags = tags ++ &[_]MsgTag{.{
-                .name = field.name,
-                .payload = payloadClassOf(field.type, specials),
-                .payload_type = if (field.type == void) "" else @typeName(field.type),
+                .name = field_name,
+                .payload = payloadClassOf(field_type, specials),
+                .payload_type = if (field_type == void) "" else @typeName(field_type),
             }};
         }
         return tags;

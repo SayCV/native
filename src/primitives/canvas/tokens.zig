@@ -1958,9 +1958,9 @@ pub const DesignTokens = struct {
 
 fn applyFlatTokenOverrides(comptime Token: type, base: Token, overrides: anytype) Token {
     var next = base;
-    inline for (@typeInfo(@TypeOf(overrides)).@"struct".fields) |field| {
-        if (@field(overrides, field.name)) |value| {
-            @field(next, field.name) = value;
+    inline for (@typeInfo(@TypeOf(overrides)).@"struct".field_names) |field_name| {
+        if (@field(overrides, field_name)) |value| {
+            @field(next, field_name) = value;
         }
     }
     return next;

@@ -727,28 +727,28 @@ pub fn MarkupView(comptime ModelT: type, comptime MsgT: type) type {
                 }
             }
             const model = scope.model;
-            inline for (@typeInfo(ModelT).@"struct".fields) |field| {
-                if (comptime sliceElement(field.type) != null and sliceElement(field.type).? == Item) {
-                    if (std.mem.eql(u8, field.name, each)) {
-                        return asSlice(Item, &@field(model, field.name));
+            inline for (@typeInfo(ModelT).@"struct".field_names, @typeInfo(ModelT).@"struct".field_types) |field_name, field_type| {
+                if (comptime sliceElement(field_type) != null and sliceElement(field_type).? == Item) {
+                    if (std.mem.eql(u8, field_name, each)) {
+                        return asSlice(Item, &@field(model, field_name));
                     }
                 }
             }
-            inline for (@typeInfo(ModelT).@"struct".decls) |decl| {
-                const DeclType = @TypeOf(@field(ModelT, decl.name));
+            inline for (@typeInfo(ModelT).@"struct".decl_names) |decl_name| {
+                const DeclType = @TypeOf(@field(ModelT, decl_name));
                 if (comptime sliceElement(DeclType) != null and sliceElement(DeclType).? == Item) {
-                    if (std.mem.eql(u8, decl.name, each)) {
-                        return asSlice(Item, &@field(ModelT, decl.name));
+                    if (std.mem.eql(u8, decl_name, each)) {
+                        return asSlice(Item, &@field(ModelT, decl_name));
                     }
                 }
                 if (comptime isItemFn(DeclType, Item, false)) {
-                    if (std.mem.eql(u8, decl.name, each)) {
-                        return @field(ModelT, decl.name)(model);
+                    if (std.mem.eql(u8, decl_name, each)) {
+                        return @field(ModelT, decl_name)(model);
                     }
                 }
                 if (comptime isItemFn(DeclType, Item, true)) {
-                    if (std.mem.eql(u8, decl.name, each)) {
-                        return @field(ModelT, decl.name)(model, ui.arena);
+                    if (std.mem.eql(u8, decl_name, each)) {
+                        return @field(ModelT, decl_name)(model, ui.arena);
                     }
                 }
             }
@@ -2767,13 +2767,13 @@ fn collectItemTypes(comptime Model: type) []const type {
     comptime {
         @setEvalBranchQuota(typeScanQuota(Model));
         var types: []const type = &.{};
-        for (@typeInfo(Model).@"struct".fields) |field| {
-            if (sliceElement(field.type)) |Element| {
+        for (@typeInfo(Model).@"struct".field_types) |field_type| {
+            if (sliceElement(field_type)) |Element| {
                 types = appendUniqueType(types, Element);
             }
         }
-        for (@typeInfo(Model).@"struct".decls) |decl| {
-            const DeclType = @TypeOf(@field(Model, decl.name));
+        for (@typeInfo(Model).@"struct".decl_names) |decl_name| {
+            const DeclType = @TypeOf(@field(Model, decl_name));
             if (sliceElement(DeclType)) |Element| {
                 types = appendUniqueType(types, Element);
             }
@@ -2819,27 +2819,27 @@ fn resolveOn(comptime T: type, value: *const T, path: []const u8, arena: ?std.me
     const tail = pathTail(path);
     switch (@typeInfo(T)) {
         .@"struct" => {
-            inline for (@typeInfo(T).@"struct".fields) |field| {
-                if (std.mem.eql(u8, field.name, head)) {
+            inline for (@typeInfo(T).@"struct".field_names, @typeInfo(T).@"struct".field_types) |field_name, field_type| {
+                if (std.mem.eql(u8, field_name, head)) {
                     if (tail) |rest| {
-                        return resolveNested(field.type, &@field(value, field.name), rest, arena);
+                        return resolveNested(field_type, &@field(value, field_name), rest, arena);
                     }
-                    return valueOf(field.type, @field(value, field.name));
+                    return valueOf(field_type, @field(value, field_name));
                 }
             }
-            inline for (@typeInfo(T).@"struct".decls) |decl| {
-                const DeclType = @TypeOf(@field(T, decl.name));
+            inline for (@typeInfo(T).@"struct".decl_names) |decl_name| {
+                const DeclType = @TypeOf(@field(T, decl_name));
                 switch (@typeInfo(DeclType)) {
                     .@"fn" => |info| {
                         if (info.params.len == 1 and info.return_type != null and info.params[0].type == *const T) {
-                            if (std.mem.eql(u8, decl.name, head) and tail == null) {
-                                return valueOf(info.return_type.?, @field(T, decl.name)(value));
+                            if (std.mem.eql(u8, decl_name, head) and tail == null) {
+                                return valueOf(info.return_type.?, @field(T, decl_name)(value));
                             }
                         }
                         if (comptime isArenaScalarFn(T, DeclType)) {
-                            if (std.mem.eql(u8, decl.name, head) and tail == null) {
+                            if (std.mem.eql(u8, decl_name, head) and tail == null) {
                                 const allocator = arena orelse return null;
-                                return valueOf(info.return_type.?, @field(T, decl.name)(value, allocator));
+                                return valueOf(info.return_type.?, @field(T, decl_name)(value, allocator));
                             }
                         }
                     },
@@ -2869,9 +2869,9 @@ fn resolveOn(comptime T: type, value: *const T, path: []const u8, arena: ?std.me
 /// runs it inside its comptime binding resolution).
 pub fn fieldIsTextBuffer(comptime T: type, head: []const u8) bool {
     @setEvalBranchQuota(comptime typeScanQuota(T));
-    inline for (@typeInfo(T).@"struct".fields) |field| {
-        const is_buffer = comptime (std.mem.indexOf(u8, @typeName(field.type), "TextBuffer(") != null);
-        if (is_buffer and std.mem.eql(u8, field.name, head)) return true;
+    inline for (@typeInfo(T).@"struct".field_names, @typeInfo(T).@"struct".field_types) |field_name, field_type| {
+        const is_buffer = comptime (std.mem.indexOf(u8, @typeName(field_type), "TextBuffer(") != null);
+        if (is_buffer and std.mem.eql(u8, field_name, head)) return true;
     }
     return false;
 }

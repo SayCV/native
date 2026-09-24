@@ -1398,16 +1398,16 @@ pub fn TsUiAppWithFeatures(comptime core: type, comptime features: ui_app.UiAppF
             const FrameArg = params[1].type.?;
             comptime validateChannelRecord(FrameArg, &.{ "width", "height", "timestampMs", "intervalMs" }, "frameMsg's FrameEvent", &.{});
             var arg: FrameArg = undefined;
-            inline for (@typeInfo(FrameArg).@"struct".fields) |field| {
-                const value: f64 = if (comptime std.mem.eql(u8, field.name, "width"))
+            inline for (@typeInfo(FrameArg).@"struct".field_names, @typeInfo(FrameArg).@"struct".field_types) |field_name, field_type| {
+                const value: f64 = if (comptime std.mem.eql(u8, field_name, "width"))
                     frame.size.width
-                else if (comptime std.mem.eql(u8, field.name, "height"))
+                else if (comptime std.mem.eql(u8, field_name, "height"))
                     frame.size.height
-                else if (comptime std.mem.eql(u8, field.name, "timestampMs"))
+                else if (comptime std.mem.eql(u8, field_name, "timestampMs"))
                     @as(f64, @floatFromInt(frame.timestamp_ns)) / std.time.ns_per_ms
                 else
                     @as(f64, @floatFromInt(frame.frame_interval_ns)) / std.time.ns_per_ms;
-                @field(arg, field.name) = channelNum(field.type, value);
+                @field(arg, field_name) = channelNum(field_type, value);
             }
             return core.frameMsg(model, arg);
         }
@@ -1596,16 +1596,16 @@ pub fn TsUiAppWithFeatures(comptime core: type, comptime features: ui_app.UiAppF
                     @compileError("TsUiApp: " ++ what ++ " record is missing field '" ++ name ++ "'");
                 }
             }
-            for (info.@"struct".fields) |field| {
-                if (field.type == u64) {
+            for (info.@"struct".field_names, info.@"struct".field_types) |field_name, field_type| {
+                if (field_type == u64) {
                     for (signed_names) |signed| {
-                        if (std.mem.eql(u8, field.name, signed)) {
-                            @compileError("TsUiApp: " ++ what ++ " field '" ++ field.name ++ "' rides signed content coordinates, which u64 cannot carry - declare it i64 or f64");
+                        if (std.mem.eql(u8, field_name, signed)) {
+                            @compileError("TsUiApp: " ++ what ++ " field '" ++ field_name ++ "' rides signed content coordinates, which u64 cannot carry - declare it i64 or f64");
                         }
                     }
                 }
-                if (field.type != i64 and field.type != u64 and field.type != f64 and field.type != f32) {
-                    @compileError("TsUiApp: " ++ what ++ " field '" ++ field.name ++ "' must be a number");
+                if (field_type != i64 and field_type != u64 and field_type != f64 and field_type != f32) {
+                    @compileError("TsUiApp: " ++ what ++ " field '" ++ field_name ++ "' must be a number");
                 }
             }
         }

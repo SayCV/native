@@ -1821,27 +1821,27 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
         fn eachInfo(comptime each: []const u8) ?EachInfo {
             comptime {
                 @setEvalBranchQuota(10_000);
-                for (@typeInfo(ModelT).@"struct".fields) |field| {
-                    if (!std.mem.eql(u8, field.name, each)) continue;
-                    if (interpreter.sliceElement(field.type)) |Element| {
-                        return .{ .Item = Element, .kind = .field, .name = field.name };
+                for (@typeInfo(ModelT).@"struct".field_names, @typeInfo(ModelT).@"struct".field_types) |field_name, field_type| {
+                    if (!std.mem.eql(u8, field_name, each)) continue;
+                    if (interpreter.sliceElement(field_type)) |Element| {
+                        return .{ .Item = Element, .kind = .field, .name = field_name };
                     }
                 }
-                for (@typeInfo(ModelT).@"struct".decls) |decl| {
-                    if (!std.mem.eql(u8, decl.name, each)) continue;
-                    const DeclType = @TypeOf(@field(ModelT, decl.name));
+                for (@typeInfo(ModelT).@"struct".decl_names) |decl| {
+                    if (!std.mem.eql(u8, decl, each)) continue;
+                    const DeclType = @TypeOf(@field(ModelT, decl));
                     if (interpreter.sliceElement(DeclType)) |Element| {
-                        return .{ .Item = Element, .kind = .decl_slice, .name = decl.name };
+                        return .{ .Item = Element, .kind = .decl_slice, .name = decl };
                     }
                     switch (@typeInfo(DeclType)) {
                         .@"fn" => |fn_info| {
                             const Return = fn_info.return_type orelse continue;
                             const Element = interpreter.sliceElement(Return) orelse continue;
                             if (interpreter.isItemFn(DeclType, Element, false)) {
-                                return .{ .Item = Element, .kind = .decl_fn, .name = decl.name };
+                                return .{ .Item = Element, .kind = .decl_fn, .name = decl };
                             }
                             if (interpreter.isItemFn(DeclType, Element, true)) {
-                                return .{ .Item = Element, .kind = .decl_fn_arena, .name = decl.name };
+                                return .{ .Item = Element, .kind = .decl_fn_arena, .name = decl };
                             }
                         },
                         else => {},
@@ -2792,27 +2792,27 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
                 if (@typeInfo(T) != .@"struct") return null;
                 const head = interpreter.pathHead(path);
                 const tail_opt = interpreter.pathTail(path);
-                for (@typeInfo(T).@"struct".fields) |field| {
-                    if (!std.mem.eql(u8, field.name, head)) continue;
+                for (@typeInfo(T).@"struct".field_names, @typeInfo(T).@"struct".field_types) |field_name, field_type| {
+                    if (!std.mem.eql(u8, field_name, head)) continue;
                     if (tail_opt) |tail| {
-                        if (@typeInfo(interpreter.Pointee(field.type)) != .@"struct") return null;
-                        return OnType(field.type, tail, allow_arena);
+                        if (@typeInfo(interpreter.Pointee(field_type)) != .@"struct") return null;
+                        return OnType(field_type, tail, allow_arena);
                     }
-                    if (!supportedValue(field.type)) return null;
-                    return field.type;
+                    if (!supportedValue(field_type)) return null;
+                    return field_type;
                 }
-                for (@typeInfo(T).@"struct".decls) |decl| {
-                    const DeclType = @TypeOf(@field(T, decl.name));
+                for (@typeInfo(T).@"struct".decl_names) |decl| {
+                    const DeclType = @TypeOf(@field(T, decl));
                     switch (@typeInfo(DeclType)) {
                         .@"fn" => |fn_info| {
                             if (fn_info.params.len == 1 and fn_info.return_type != null and fn_info.params[0].type == *const T) {
-                                if (std.mem.eql(u8, decl.name, head) and tail_opt == null) {
+                                if (std.mem.eql(u8, decl, head) and tail_opt == null) {
                                     if (!supportedValue(fn_info.return_type.?)) return null;
                                     return fn_info.return_type.?;
                                 }
                             }
                             if (allow_arena and interpreter.isArenaScalarFn(T, DeclType)) {
-                                if (std.mem.eql(u8, decl.name, head) and tail_opt == null) {
+                                if (std.mem.eql(u8, decl, head) and tail_opt == null) {
                                     if (!supportedValue(fn_info.return_type.?)) return null;
                                     return fn_info.return_type.?;
                                 }
@@ -2852,8 +2852,8 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
         fn hasField(comptime T: type, comptime name: []const u8) bool {
             comptime {
                 @setEvalBranchQuota(10_000);
-                for (@typeInfo(T).@"struct".fields) |field| {
-                    if (std.mem.eql(u8, field.name, name)) return true;
+                for (@typeInfo(T).@"struct".field_names) |field_name| {
+                    if (std.mem.eql(u8, field_name, name)) return true;
                 }
                 return false;
             }

@@ -1377,9 +1377,9 @@ pub fn UiAppWithFeatures(comptime ModelT: type, comptime MsgT: type, comptime fe
         /// `destroy`.
         pub fn create(backing: std.mem.Allocator, options: Options) error{OutOfMemory}!*Self {
             comptime {
-                for (@typeInfo(ModelT).@"struct".fields) |field| {
-                    if (field.default_value_ptr == null) @compileError(
-                        "UiApp.create default-initializes the Model in place, but Model field '" ++ field.name ++
+                for (@typeInfo(ModelT).@"struct".field_names, @typeInfo(ModelT).@"struct".field_types) |field_name, field_type| {
+                    if (field_type == null) @compileError(
+                        "UiApp.create default-initializes the Model in place, but Model field '" ++ field_name ++
                             "' has no default value - give every Model field a default, or use initInPlace and assign app.model through the pointer yourself",
                     );
                 }

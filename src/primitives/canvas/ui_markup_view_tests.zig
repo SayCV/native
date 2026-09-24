@@ -553,11 +553,11 @@ test "the style token name lists match the canvas token structs and the interpre
     }
     // Every color entry targets a StyleTokenRefs field, and every color
     // field of StyleTokenRefs is reachable from markup.
-    inline for (@typeInfo(canvas.StyleTokenRefs).@"struct".fields) |field| {
-        if (comptime std.mem.eql(u8, field.name, "radius")) continue;
+    inline for (@typeInfo(canvas.StyleTokenRefs).@"struct".field_names) |field_name| {
+        if (comptime std.mem.eql(u8, field_name, "radius")) continue;
         var found = false;
         for (markup_view.color_style_attr_fields) |entry| {
-            if (std.mem.eql(u8, entry.zig, field.name)) found = true;
+            if (std.mem.eql(u8, entry.zig, field_name)) found = true;
         }
         try testing.expect(found);
     }
