@@ -30,6 +30,13 @@ const PackageTarget = enum {
 const default_native_sdk_path = "../..";
 const app_exe_name = "vue";
 
+fn pathFromRoot(b: *std.Build, sub_path: []const u8) []const u8 {
+    if (@hasField(std.Build, "build_root")) {
+        return b.build_root.join(b.allocator, &.{sub_path}) catch @panic("out of memory");
+    }
+    return b.root.joinString(b.allocator, sub_path) catch @panic("out of memory");
+}
+
 pub fn build(b: *std.Build) void {
     const target = nativeSdkTarget(b);
     const optimize = b.standardOptimizeOption(.{});
@@ -383,7 +390,7 @@ fn addWebView2RuntimeRunFiles(b: *std.Build, target: std.Build.ResolvedTarget, r
     if (web_engine != .system) return;
     if (target.result.os.tag != .windows) return;
     const loader_dir = std.fs.path.dirname(webView2LoaderSubPath(target)).?;
-    run.addPathDir(b.pathResolve(&.{b.pathJoin(&.{ native_sdk_path, loader_dir })}));
+    run.addPathDir(pathFromRoot(b, b.pathJoin(&.{ native_sdk_path, loader_dir })));
 }
 
 fn addCefRuntimeRunFiles(b: *std.Build, target: std.Build.ResolvedTarget, run: *std.Build.Step.Run, exe: *std.Build.Step.Compile, web_engine: WebEngineOption, cef_dir: []const u8) void {

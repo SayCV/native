@@ -166,7 +166,7 @@ pub fn run(allocator: std.mem.Allocator, io: std.Io, verb: Verb, options: Option
     try argv.appendSlice(allocator, options.forwarded_args);
 
     if (verb == .dev and !wants_frontend_dev) {
-        std.debug.print("native dev: building and running {s} ({s}) — hot reload arms in Debug builds\n", .{
+        std.debug.print("native dev: building and running {s} ({s}) - hot reload arms in Debug builds\n", .{
             metadata.name,
             if (dev_debug) "Debug" else "optimize forwarded",
         });
