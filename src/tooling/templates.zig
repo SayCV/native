@@ -1581,7 +1581,7 @@ fn buildZig(allocator: std.mem.Allocator, names: TemplateNames, framework_path: 
         \\    // loader) from the framework root; a PATH-resolved `native` could
         \\    // belong to a different checkout than the one this build compiled
         \\    // against, so hand the same root over explicitly.
-        \\    package.setEnvironmentVariable("NATIVE_SDK_PATH", b.pathFromRoot(native_sdk_path));
+        \\    package.setEnvironmentVariable("NATIVE_SDK_PATH", b.pathResolve(&.{native_sdk_path}));
         \\    package.addFileArg(package_exe.getEmittedBin());
         \\    package.addArgs(&.{ "--web-engine", @tagName(web_engine), "--cef-dir", cef_dir });
         \\    // Forward the RESOLVED web-layer decision, never the raw inputs:
@@ -1965,7 +1965,7 @@ fn buildZig(allocator: std.mem.Allocator, names: TemplateNames, framework_path: 
         \\    if (!web_layer) return;
         \\    if (target.result.os.tag != .windows) return;
         \\    const loader_dir = std.fs.path.dirname(webView2LoaderSubPath(target)).?;
-        \\    run.addPathDir(b.pathFromRoot(b.pathJoin(&.{ native_sdk_path, loader_dir })));
+        \\    run.addPathDir(b.pathResolve(&.{b.pathJoin(&.{ native_sdk_path, loader_dir })}));
         \\}
         \\
         \\fn addCefRuntimeRunFiles(b: *std.Build, target: std.Build.ResolvedTarget, run: *std.Build.Step.Run, exe: *std.Build.Step.Compile, web_engine: WebEngineOption, cef_dir: []const u8) void {
@@ -4196,7 +4196,7 @@ test "writeDefaultApp emits Vite project files" {
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "\"native\", \"dev\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "dev.step.dependOn(&frontend_install.step)") != null);
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "addWebView2RuntimeRunFiles(b, target, dev, web_engine, web_layer, native_sdk_path)") != null);
-    try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "package.setEnvironmentVariable(\"NATIVE_SDK_PATH\", b.pathFromRoot(native_sdk_path))") != null);
+    try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "package.setEnvironmentVariable(\"NATIVE_SDK_PATH\", b.pathResolve(&.{native_sdk_path}))") != null);
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "chromium") != null);
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "cef-dir") != null);
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "src/platform/macos/cef_host.mm") != null);

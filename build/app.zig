@@ -1027,7 +1027,7 @@ fn tsCoreStage(
         migrations_zig = sqlite_check.addOutputFileArg("migrations.zig");
         sqlite_check.addArg("--metadata-out");
         _ = sqlite_check.addOutputFileArg("sqlite.meta.json");
-        sqlite_check.addArgs(&.{ "--state", b.pathFromRoot(appPath(b, app_root, "src/schema/migrations.lock.json")) });
+        sqlite_check.addArgs(&.{ "--state", b.pathResolve(&.{appPath(b, app_root, "src/schema/migrations.lock.json")}) });
         if (appFileExists(b, app_root, "src/schema/migrations.lock.json")) {
             sqlite_check.addFileInput(b.path(appPath(b, app_root, "src/schema/migrations.lock.json")));
         }
@@ -1370,7 +1370,7 @@ fn sqliteMigrationsStage(b: *std.Build, dep: *std.Build.Dependency, app_root: []
     generate.addDirectoryArg(b.path(appPath(b, app_root, "src")));
     generate.addArg("--zig-out");
     const migrations = generate.addOutputFileArg("migrations.zig");
-    generate.addArgs(&.{ "--state", b.pathFromRoot(appPath(b, app_root, "src/schema/migrations.lock.json")) });
+    generate.addArgs(&.{ "--state", b.pathResolve(&.{appPath(b, app_root, "src/schema/migrations.lock.json")}) });
     if (appFileExists(b, app_root, "src/schema/migrations.lock.json")) {
         generate.addFileInput(b.path(appPath(b, app_root, "src/schema/migrations.lock.json")));
     }
@@ -2092,7 +2092,7 @@ pub fn addAppArtifacts(b: *std.Build, dep: *std.Build.Dependency, app_options: A
         // The CLI resolves SDK-owned package inputs (the vendored
         // WebView2 loader) from the framework root; the cached artifact's
         // own location cannot derive it, so hand it over explicitly.
-        package_run.setEnvironmentVariable("NATIVE_SDK_PATH", dep.builder.pathFromRoot("."));
+        package_run.setEnvironmentVariable("NATIVE_SDK_PATH", dep.builder.pathResolve(&.{"."}));
         package_run.addArgs(&.{ "package", "--target", package_target_name, "--manifest", manifest_name, "--output" });
         package_run.addArg(if (host_os == .macos)
             b.fmt("zig-out/package/{s}.app", .{app_options.name})
@@ -2822,7 +2822,7 @@ fn addWebView2RuntimeRunFiles(dep: *std.Build.Dependency, target: std.Build.Reso
     if (!web_layer) return;
     if (target.result.os.tag != .windows) return;
     const loader_dir = std.fs.path.dirname(webView2LoaderSubPath(target)).?;
-    run.addPathDir(dep.builder.pathFromRoot(loader_dir));
+    run.addPathDir(dep.builder.pathResolve(&.{loader_dir}));
 }
 
 fn addCefRuntimeRunFiles(b: *std.Build, target: std.Build.ResolvedTarget, run: *std.Build.Step.Run, exe: *std.Build.Step.Compile, web_engine: WebEngineOption, cef_dir: []const u8) void {

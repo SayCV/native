@@ -2,10 +2,10 @@ const std = @import("std");
 const web_engine_tool = @import("src/tooling/web_engine.zig");
 
 fn repositoryScriptcBin(b: *std.Build) []const u8 {
-    return b.pathFromRoot(if (b.graph.host.result.os.tag == .windows)
+    return b.pathResolve(&.{if (b.graph.host.result.os.tag == .windows)
         "packages/core/node_modules/.bin/scriptc.cmd"
     else
-        "packages/core/node_modules/.bin/scriptc");
+        "packages/core/node_modules/.bin/scriptc"});
 }
 
 const PlatformOption = enum {
@@ -186,7 +186,7 @@ pub fn build(b: *std.Build) void {
     // Resolve against THIS build's root: as a dependency of a user app the
     // build runner's cwd is the app project, and a cwd-relative "app.zon"
     // would read (and panic on) the user's manifest instead of ours.
-    const app_web_engine = web_engine_tool.readManifestConfig(b.allocator, b.graph.io, b.pathFromRoot("app.zon")) catch |err| {
+    const app_web_engine = web_engine_tool.readManifestConfig(b.allocator, b.graph.io, b.pathResolve(&.{"app.zon"})) catch |err| {
         std.debug.panic("failed to read the framework's own app.zon web engine config: {s}", .{@errorName(err)});
     };
     const resolved_web_engine = web_engine_tool.resolve(app_web_engine, .{
@@ -571,8 +571,8 @@ pub fn build(b: *std.Build) void {
         .root_module = docs_previews_mod,
     });
     const run_docs_previews = b.addRunArtifact(docs_previews_exe);
-    run_docs_previews.addArg(b.pathFromRoot("docs/public/components"));
-    run_docs_previews.addArg(b.pathFromRoot("docs/src/lib/component-vocab.json"));
+    run_docs_previews.addArg(b.pathResolve(&.{"docs/public/components"}));
+    run_docs_previews.addArg(b.pathResolve(&.{"docs/src/lib/component-vocab.json"}));
     run_docs_previews.has_side_effects = true;
     const docs_previews_step = b.step("docs-component-previews", "Render built-in component previews and vocab JSON into docs/");
     docs_previews_step.dependOn(&run_docs_previews.step);
@@ -1917,7 +1917,7 @@ pub fn build(b: *std.Build) void {
     // the check needs no iOS cross-compile.
     const package_ios_layout_run = b.addRunArtifact(host_cli_exe);
     package_ios_layout_run.setCwd(b.path("examples/calculator"));
-    package_ios_layout_run.setEnvironmentVariable("NATIVE_SDK_PATH", b.pathFromRoot("."));
+    package_ios_layout_run.setEnvironmentVariable("NATIVE_SDK_PATH", b.pathResolve(&.{"."}));
     package_ios_layout_run.addArgs(&.{ "package", "--target", "ios", "--output", "zig-out/package/test-ios-layout", "--binary" });
     package_ios_layout_run.addFileArg(embed_lib.getEmittedBin());
     package_ios_layout_run.has_side_effects = true;
@@ -1965,8 +1965,8 @@ pub fn build(b: *std.Build) void {
     // by the live loops, not CI).
     const package_android_layout_run = b.addRunArtifact(host_cli_exe);
     package_android_layout_run.setCwd(b.path("examples/calculator"));
-    package_android_layout_run.setEnvironmentVariable("NATIVE_SDK_PATH", b.pathFromRoot("."));
-    package_android_layout_run.setEnvironmentVariable("ANDROID_HOME", b.pathFromRoot("zig-out/no-android-sdk"));
+    package_android_layout_run.setEnvironmentVariable("NATIVE_SDK_PATH", b.pathResolve(&.{"."}));
+    package_android_layout_run.setEnvironmentVariable("ANDROID_HOME", b.pathResolve(&.{"zig-out/no-android-sdk"}));
     package_android_layout_run.addArgs(&.{ "package", "--target", "android", "--output", "zig-out/package/test-android-layout", "--binary" });
     package_android_layout_run.addFileArg(embed_lib.getEmittedBin());
     package_android_layout_run.has_side_effects = true;
@@ -4516,7 +4516,7 @@ fn addExampleTestStep(b: *std.Build, cli_exe: *std.Build.Step.Compile, group: *s
 fn managedExampleRun(b: *std.Build, cli_exe: *std.Build.Step.Compile, argv_tail: []const []const u8) *std.Build.Step.Run {
     const run = b.addRunArtifact(cli_exe);
     run.addArgs(argv_tail);
-    run.setEnvironmentVariable("NATIVE_SDK_PATH", b.pathFromRoot("."));
+    run.setEnvironmentVariable("NATIVE_SDK_PATH", b.pathResolve(&.{"."}));
     return run;
 }
 

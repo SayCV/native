@@ -335,7 +335,7 @@ fn addWebView2RuntimeRunFiles(b: *std.Build, target: std.Build.ResolvedTarget, r
     if (web_engine != .system) return;
     if (target.result.os.tag != .windows) return;
     const loader_dir = std.fs.path.dirname(webView2LoaderSubPath(target)).?;
-    run.addPathDir(b.pathFromRoot(b.pathJoin(&.{ native_sdk_path, loader_dir })));
+    run.addPathDir(b.pathResolve(&.{b.pathJoin(&.{ native_sdk_path, loader_dir })}));
 }
 
 fn addCefRuntimeRunFiles(b: *std.Build, target: std.Build.ResolvedTarget, run: *std.Build.Step.Run, exe: *std.Build.Step.Compile, web_engine: WebEngineOption, cef_dir: []const u8) void {
