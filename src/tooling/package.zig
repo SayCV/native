@@ -27,8 +27,8 @@ pub const PackageTarget = enum {
     android,
 
     pub fn parse(value: []const u8) ?PackageTarget {
-        inline for (@typeInfo(PackageTarget).@"enum".fields) |field| {
-            if (std.mem.eql(u8, value, field.name)) return @enumFromInt(field.value);
+        inline for (@typeInfo(PackageTarget).@"enum".field_names, @typeInfo(PackageTarget).@"enum".field_values) |field_name, field_value| {
+            if (std.mem.eql(u8, value, field_name)) return @enumFromInt(field_value);
         }
         return null;
     }

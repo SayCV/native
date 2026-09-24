@@ -52,15 +52,15 @@ pub fn describe(comptime T: type) []const u8 {
             .void => return "void",
             .@"enum" => |info| {
                 var out: []const u8 = "enum(" ++ @typeName(info.tag_type) ++ "){";
-                for (info.fields) |field| {
-                    out = out ++ field.name ++ "=" ++ std.fmt.comptimePrint("{d}", .{field.value}) ++ ",";
+                for (info.field_names, info.field_values) |field_name, field_value| {
+                    out = out ++ field_name ++ "=" ++ std.fmt.comptimePrint("{d}", .{field_value}) ++ ",";
                 }
                 return out ++ "}";
             },
             .@"struct" => |info| {
                 var out: []const u8 = "struct{";
-                for (info.fields) |field| {
-                    out = out ++ field.name ++ ":" ++ describe(field.type) ++ ",";
+                for (info.field_names, info.field_types) |field_name, field_type| {
+                    out = out ++ field_name ++ ":" ++ describe(field_type) ++ ",";
                 }
                 return out ++ "}";
             },
