@@ -201,6 +201,23 @@ pub fn RuntimeFlow(comptime Runtime: type) type {
             try completeBridgeResponse(self, source.window_id, source.webview_label, response);
         }
 
+        fn processAppStartInner(self: *Runtime, app: App) !void {
+            launch_timing.lap("app_start");
+            try reservePrimaryStartupWindow(self);
+            try app.start(self);
+            if (self.options.extensions) |registry| try registry.startAll(extensionContext(self));
+            try dispatchEvent(self, app, .{ .lifecycle = .start });
+            launch_timing.lap("app_started");
+            if (try app.scene()) |scene| {
+                try loadScene(self, app, scene);
+            } else {
+                try loadStartupWindows(self, app);
+            }
+            launch_timing.lap("scene_loaded");
+            self.invalidateFor(.startup, null);
+            log(self, "app.start", "app started", &.{trace.string("app", app.name)});
+        }
+
         pub fn dispatchPlatformEvent(self: *Runtime, app: App, event_value: platform.Event) anyerror!void {
             // Session recording: stage the event on entry, commit it on
             // exit — so effect results drained DURING dispatch precede
@@ -232,21 +249,7 @@ pub fn RuntimeFlow(comptime Runtime: type) type {
                     // platform stop path and the only trace is a bare
                     // `app.stop` right after `start` — which reads like a
                     // clean exit while the main window sits blank.
-                    errdefer |err| recordDispatchError(self, "app_start", err);
-                    launch_timing.lap("app_start");
-                    try reservePrimaryStartupWindow(self);
-                    try app.start(self);
-                    if (self.options.extensions) |registry| try registry.startAll(extensionContext(self));
-                    try dispatchEvent(self, app, .{ .lifecycle = .start });
-                    launch_timing.lap("app_started");
-                    if (try app.scene()) |scene| {
-                        try loadScene(self, app, scene);
-                    } else {
-                        try loadStartupWindows(self, app);
-                    }
-                    launch_timing.lap("scene_loaded");
-                    self.invalidateFor(.startup, null);
-                    log(self, "app.start", "app started", &.{trace.string("app", app.name)});
+                    processAppStartInner(self, app) catch |err| recordDispatchError(self, "app_start", err);
                 },
                 .app_activated => {
                     try WindowViewMethods().setAppActive(self, true);
