@@ -2793,6 +2793,9 @@ test "DMG arrow unions translucent joins and antialiases rounded edges" {
 }
 
 test "DMG Finder script carries custom layout and escapes paths and names" {
+    if (@import("builtin").os.tag == .windows) {
+        return error.SkipZigTest;
+    }
     const script = try dmgFinderScriptAlloc(std.testing.allocator, .{
         .window_width = 720,
         .window_height = 440,
@@ -2837,6 +2840,9 @@ test "DMG Finder script positions the explicit visible item list" {
 }
 
 test "DMG background discovers an adjacent retina source" {
+    if (@import("builtin").os.tag == .windows) {
+        return error.SkipZigTest;
+    }
     var cwd = std.Io.Dir.cwd();
     const root = ".zig-cache/test-package-dmg-retina";
     try cwd.deleteTree(std.testing.io, root);

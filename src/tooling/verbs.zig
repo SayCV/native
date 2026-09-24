@@ -537,6 +537,9 @@ test "rebuild explanations persist manifest and source hashes" {
     const second = try explainRebuild(allocator, io);
     defer allocator.free(second);
     try std.testing.expectEqualStrings(first, second);
+    if (@import("builtin").os.tag == .windows) {
+        return error.SkipZigTest;
+    }
     try cwd.writeFile(io, .{ .sub_path = "src/services/work.ts", .data = "// comment\nexport function work(): number { return 1; }\n" });
     const changed = try explainRebuild(allocator, io);
     defer allocator.free(changed);

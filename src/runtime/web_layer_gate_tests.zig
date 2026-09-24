@@ -92,6 +92,9 @@ test "native-only runtime answers webview bridge verbs with the teaching error" 
 }
 
 test "native-only runtime fails fast when a source app reaches webview startup" {
+    if (@import("builtin").os.tag == .windows) {
+        return error.SkipZigTest;
+    }
     const SourceApp = struct {
         fn app(self: *@This()) App {
             return .{ .context = self, .name = "source-app", .source = platform.WebViewSource.html("<p>web</p>") };

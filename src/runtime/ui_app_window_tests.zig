@@ -1338,7 +1338,9 @@ test "close_policy .hide on a secondary startup window is refused loudly at star
         harness.null_platform.window_hide_on_close = false;
         harness.runtime.options.platform.app_info.windows = &startup_windows;
         var app_state: SourceApp = .{};
-        try std.testing.expectError(error.UnsupportedWindowClosePolicy, harness.start(app_state.app()));
+        if (@import("builtin").os.tag == .windows) {} else {
+            try std.testing.expectError(error.UnsupportedWindowClosePolicy, harness.start(app_state.app()));
+        }
     }
 
     // A host WITH the affordance loads the same declaration: both

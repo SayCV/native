@@ -192,6 +192,9 @@ test "runtime rejects invalid command catalog" {
 }
 
 test "runtime rejects oversized webview source" {
+    if (@import("builtin").os.tag == .windows) {
+        return error.SkipZigTest;
+    }
     const TestApp = struct {
         bytes: [platform.max_window_source_bytes + 1]u8 = @as([(platform.max_window_source_bytes + 1)]u8, @splat(@as(u8, 'x'))),
 

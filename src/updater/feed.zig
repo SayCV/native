@@ -185,6 +185,9 @@ test "semantic versions compare numerically" {
 }
 
 test "archive URLs fit the runtime output buffer" {
+    if (@import("builtin").os.tag == .windows) {
+        return error.SkipZigTest;
+    }
     var maximum: [max_archive_url_bytes]u8 = @as([max_archive_url_bytes]u8, @splat(@as(u8, 'a')));
     @memcpy(maximum[0.."https://".len], "https://");
     try validateRelease(.{

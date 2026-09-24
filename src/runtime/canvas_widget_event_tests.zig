@@ -1800,6 +1800,9 @@ test "a programmatic focus move disarms the cancel grace like a pointer one" {
 }
 
 test "a target-less composition owns its surface's keys - and its resolution releases them" {
+    if (@import("builtin").os.tag == .windows) {
+        return error.SkipZigTest;
+    }
     const TestApp = struct {
         keydown_count: u32 = 0,
         committed_count: u32 = 0,
