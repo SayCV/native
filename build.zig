@@ -119,8 +119,8 @@ test "root TypeScript markup discovery classification and resolver budgets" {
     const max_segments_path = @as([44]u8, @bitCast(@as([22][2]u8, @splat("a/".*)))) ++ "a";
     try std.testing.expect(app_build.markupSourcePathWithinBudget(max_segments_path));
     try std.testing.expect(!app_build.markupSourcePathWithinBudget(max_segments_path ++ "/a"));
-    try std.testing.expect(app_build.markupSourcePathWithinBudget(@as([196]u8, @splat('a'))));
-    try std.testing.expect(!app_build.markupSourcePathWithinBudget(@as([197]u8, @splat('a'))));
+    try std.testing.expect(app_build.markupSourcePathWithinBudget(&@as([196]u8, @splat('a'))));
+    try std.testing.expect(!app_build.markupSourcePathWithinBudget(&@as([197]u8, @splat('a'))));
 }
 
 test "generated TypeScript runners install the compiled root markup view" {

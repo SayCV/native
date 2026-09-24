@@ -119,7 +119,7 @@ test "pty admission: every refused spawn delivers exactly one rejected exit" {
 
     // argv over the byte budget.
     const big = @as([effects_mod.max_effect_argv_bytes + 1]u8, @splat('y'));
-    fx.ptySpawn(.{ .key = 3, .argv = &.{big}, .on_event = DirectFx.ptyMsg(.pty) });
+    fx.ptySpawn(.{ .key = 3, .argv = &.{&big}, .on_event = DirectFx.ptyMsg(.pty) });
     _ = try expectExit(&fx, 3, .rejected);
 
     // A zero dimension.
@@ -159,7 +159,7 @@ test "fake pty write capture, resize mirror, and kill mirror" {
 
     // Over-bound single write: refused whole (returns false), never a cut.
     const oversized = @as([effects_mod.max_effect_pty_write_bytes + 1]u8, @splat('z'));
-    try testing.expect(!fx.ptyWrite(11, oversized));
+    try testing.expect(!fx.ptyWrite(11, &oversized));
     try testing.expectEqualStrings("ls -la\r", fx.ptyWrittenBytes(11));
 
     fx.ptyResize(11, 200, 60);

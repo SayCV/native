@@ -216,7 +216,7 @@ pub const Database = struct {
         }
         self.write_db.setRelationalAuthorizer(false) catch return .{ .outcome = .migrate_failed, .version = current };
         var version_sql_buf: [64]u8 = undefined;
-        const version_sql = std.fmt.bufPrintZ(&version_sql_buf, "PRAGMA user_version={d};", .{target}) catch
+        const version_sql = std.fmt.bufPrintSentinel(&version_sql_buf, "PRAGMA user_version={d};", .{target}) catch
             return .{ .outcome = .migrate_failed, .version = current };
         self.write_db.exec(version_sql) catch return .{ .outcome = .migrate_failed, .version = current };
         self.write_db.exec("COMMIT;") catch return .{ .outcome = .migrate_failed, .version = current };

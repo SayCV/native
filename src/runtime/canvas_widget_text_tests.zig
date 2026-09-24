@@ -3832,7 +3832,7 @@ test "typing into a textarea seeded with a long document survives dispatch" {
         .id = 2,
         .kind = .textarea,
         .frame = geometry.RectF.init(12, 16, 180, 84),
-        .text = doc,
+        .text = &doc,
         .semantics = .{ .label = "Markdown source" },
     };
     var nodes: [2]canvas.WidgetLayoutNode = undefined;

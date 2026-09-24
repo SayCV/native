@@ -1200,7 +1200,7 @@ test "text layout caret selection and point queries have no line-count cap" {
         .size = 10,
         .origin = geometry.PointF.init(4, 20),
         .color = Color.rgb8(0, 0, 0),
-        .text = doc,
+        .text = &doc,
     };
     const options = TextLayoutOptions{ .max_width = 200, .line_height = 14, .wrap = .word };
 

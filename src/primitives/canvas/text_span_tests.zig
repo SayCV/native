@@ -222,7 +222,7 @@ test "an oversized word cluster-wraps instead of overflowing" {
 }
 
 test "a later visual-line page retains an over-capacity wrapped paragraph" {
-    const spans = [_]TextSpan{.{ .text = @as([140]u8, @splat('a')) }};
+    const spans = [_]TextSpan{.{ .text = &@as([140]u8, @splat('a')) }};
     const options = text_spans.TextSpanLayoutOptions{ .size = 14, .max_width = 1 };
     var first_runs: [text_spans.max_text_span_runs_per_paragraph]TextSpanRun = undefined;
     const first = layout(&spans, options, &first_runs);
@@ -723,7 +723,7 @@ test "preformatted span hit mapping preserves unpainted source whitespace" {
 
 test "span hit mapping and selection page beyond the first 128 visual lines" {
     const paragraph = @as([140]u8, @splat('a'));
-    const spans = [_]TextSpan{.{ .text = paragraph, .monospace = true }};
+    const spans = [_]TextSpan{.{ .text = &paragraph, .monospace = true }};
     const options = text_spans.TextSpanLayoutOptions{ .size = 14, .max_width = 1 };
     var runs: [text_spans.max_text_span_runs_per_paragraph]TextSpanRun = undefined;
     const layout_result = layout(&spans, options, &runs);
@@ -734,7 +734,7 @@ test "span hit mapping and selection page beyond the first 128 visual lines" {
     try testing.expectEqual(
         later_line,
         text_spans.textSpanOffsetForPoint(
-            paragraph,
+            &paragraph,
             &spans,
             options,
             geometry.PointF.init(-1, y),
@@ -743,7 +743,7 @@ test "span hit mapping and selection page beyond the first 128 visual lines" {
 
     var rects: [16]canvas.TextSelectionRect = undefined;
     const selection = text_spans.textSpanSelectionRects(
-        paragraph,
+        &paragraph,
         &spans,
         options,
         .{ .start = later_line, .end = paragraph.len },

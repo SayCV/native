@@ -1296,12 +1296,12 @@ test "describe traverses *const record fields and pointer-item lists like the en
 
 test "the reflect tag vocabulary never drifts from canvas.TextInputEvent" {
     const reflect = @import("ui_markup_reflect.zig");
-    const event_fields = @typeInfo(canvas.TextInputEvent).@"union".fields;
-    try testing.expectEqual(reflect.text_input_event_tags.len, event_fields.len);
-    inline for (event_fields) |field| {
+    const event_field_names = @typeInfo(canvas.TextInputEvent).@"union".field_names;
+    try testing.expectEqual(reflect.text_input_event_tags.len, event_field_names.len);
+    inline for (event_field_names) |field_name| {
         var found = false;
         for (reflect.text_input_event_tags) |tag| {
-            if (std.mem.eql(u8, tag, field.name)) found = true;
+            if (std.mem.eql(u8, tag, field_name)) found = true;
         }
         try testing.expect(found);
     }
@@ -1318,16 +1318,17 @@ test "the reflect tag vocabulary never drifts from canvas.TextInputEvent" {
 
 test "the reflect field vocabulary never drifts from canvas.ScrollState" {
     const reflect = @import("ui_markup_reflect.zig");
-    const state_fields = @typeInfo(canvas.ScrollState).@"struct".fields;
-    try testing.expectEqual(reflect.scroll_state_field_names.len, state_fields.len);
-    inline for (state_fields) |field| {
+    const state_field_names = @typeInfo(canvas.ScrollState).@"struct".field_names;
+    const state_field_types = @typeInfo(canvas.ScrollState).@"struct".field_types;
+    try testing.expectEqual(reflect.scroll_state_field_names.len, state_field_names.len);
+    inline for (state_field_names, state_field_types) |field_name, field_type| {
         // Every real field appears in the pinned vocabulary, and every
         // real field is the f32 the translation widens from — a canvas
         // field changing type (or gaining a sibling) fails here first.
-        try testing.expectEqual(f32, field.type);
+        try testing.expectEqual(f32, field_type);
         var found = false;
         for (reflect.scroll_state_field_names) |name| {
-            if (std.mem.eql(u8, name, field.name)) found = true;
+            if (std.mem.eql(u8, name, field_name)) found = true;
         }
         try testing.expect(found);
     }

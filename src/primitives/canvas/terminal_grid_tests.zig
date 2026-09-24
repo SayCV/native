@@ -448,7 +448,7 @@ test "the text preflight counts referenced sibling text already in the list" {
     var builder = canvas.Builder.init(&commands);
     // Referenced text (a slice not from allocTextBytes), as a sibling
     // text widget emits.
-    try builder.drawText(.{ .id = 1, .font_id = 2, .size = 12, .origin = geometry.PointF.init(0, 0), .color = white, .text = filler });
+    try builder.drawText(.{ .id = 1, .font_id = 2, .size = 12, .origin = geometry.PointF.init(0, 0), .color = white, .text = &filler });
     try testing.expectEqual(@as(usize, 0), builder.text_byte_len); // referenced, not builder-owned
 
     try grid_model.paint(baseGrid(&rows), &builder, .{
@@ -662,7 +662,7 @@ test "a row adding no text paints even when siblings spent the text share" {
 
     var commands: [64]canvas.CanvasCommand = undefined;
     var builder = canvas.Builder.init(&commands);
-    try builder.drawText(.{ .id = 1, .font_id = 2, .size = 12, .origin = geometry.PointF.init(0, 0), .color = white, .text = filler });
+    try builder.drawText(.{ .id = 1, .font_id = 2, .size = 12, .origin = geometry.PointF.init(0, 0), .color = white, .text = &filler });
 
     try grid_model.paint(baseGrid(&rows), &builder, .{
         .frame = geometry.RectF.init(0, 0, 100, 40),
@@ -912,7 +912,7 @@ test "a wide cheap terminal paints its rows under the widget command budget" {
     var text_rows: usize = 0;
     for (builder.displayList().commands) |command| {
         switch (command) {
-            .draw_text => |t| if (std.mem.eql(u8, t.text, @as([198]u8, @splat('a')))) {
+            .draw_text => |t| if (std.mem.eql(u8, t.text, &@as([198]u8, @splat('a')))) {
                 text_rows += 1;
             },
             else => {},

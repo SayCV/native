@@ -1690,7 +1690,7 @@ test "u64-attested slots generate the unsigned twin; i64 and f64 slots are untou
     try testing.expect(std.mem.indexOf(u8, generated, "abi.dispatch_number_bytes(2, shim_rt.exactF64Unsigned(payload.status), payload.body.ptr, payload.body.len, &cmd_ptr, &cmd_len)") != null);
     // The generated module stays valid Zig.
     const source_z = try arena.dupeSentinel(u8, generated, 0);
-    const tree = try std.zig.Ast.parse(arena, source_z, .zig);
+    const tree = try std.zig.Ast.parse(arena, source_z, .{ .mode = .zig });
     try testing.expectEqual(@as(usize, 0), tree.errors.len);
 }
 
@@ -1932,7 +1932,7 @@ test "the emitted shim parses as Zig" {
     const arena = arena_state.allocator();
     const source = try emitFromJson(arena, sidecar_mod.minimal_valid_json);
     const source_z = try arena.dupeSentinel(u8, source, 0);
-    const tree = try std.zig.Ast.parse(arena, source_z, .zig);
+    const tree = try std.zig.Ast.parse(arena, source_z, .{ .mode = .zig });
     try testing.expectEqual(@as(usize, 0), tree.errors.len);
 }
 
@@ -2010,7 +2010,7 @@ test "exotic strings in names and env entries emit as valid Zig" {
     const parsed = try sidecar_mod.read(arena, source, &diags);
     const generated = try emit(arena, parsed, &diags);
     const source_z = try arena.dupeSentinel(u8, generated, 0);
-    const tree = try std.zig.Ast.parse(arena, source_z, .zig);
+    const tree = try std.zig.Ast.parse(arena, source_z, .{ .mode = .zig });
     try testing.expectEqual(@as(usize, 0), tree.errors.len);
     try testing.expect(std.mem.indexOf(u8, generated, "APP\\\"MODE\\\\X") != null);
 }
@@ -2039,7 +2039,7 @@ test "channel glue speaks the sidecar's message union name" {
     try testing.expect(std.mem.indexOf(u8, generated, "shim_rt.channelEnvelope(envelope)") != null);
     try testing.expect(std.mem.indexOf(u8, generated, "if (!header.produced) return null;") != null);
     const source_z = try arena.dupeSentinel(u8, generated, 0);
-    const tree = try std.zig.Ast.parse(arena, source_z, .zig);
+    const tree = try std.zig.Ast.parse(arena, source_z, .{ .mode = .zig });
     try testing.expectEqual(@as(usize, 0), tree.errors.len);
 }
 

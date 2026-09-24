@@ -2406,7 +2406,7 @@ test "canvas gpu packet text serializes engine measured line breaks" {
                 .size = 12,
                 .origin = geometry.PointF.init(4, 40),
                 .color = Color.rgb8(0, 0, 0),
-                .text = overflow_text,
+                .text = &overflow_text,
                 .text_layout = .{ .line_height = 16 },
             },
             .uses_glyph_atlas = true,

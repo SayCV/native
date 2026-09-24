@@ -351,7 +351,7 @@ test "provenance record caps truncate honestly" {
     for (&chain) |*site| site.* = .{ .src_path = "a.native", .span = .{ .start = 1, .end = 2 }, .line = 1, .column = 1 };
     const source = canvas.ui_provenance.NodeSource{ .src_path = "a.native", .span = .{ .start = 0, .end = 4 }, .chain = &chain };
     const long_key = @as([max_key_bytes + 8]u8, @splat('k'));
-    const keys = [_]canvas.ui_provenance.Key{.{ .str = long_key }};
+    const keys = [_]canvas.ui_provenance.Key{.{ .str = &long_key }};
     try table.appendRecord(5, &source, &keys, false);
     const record = table.find(5).?;
     try std.testing.expectEqual(@as(u8, max_chain), record.chain_len);

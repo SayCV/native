@@ -2331,7 +2331,7 @@ test "a truncated collect routes err - a cut stdout never parses as whole" {
     const chunk = @as([4096]u8, @splat('x'));
     var fed: usize = 0;
     while (fed <= effects_mod.max_effect_collect_bytes) : (fed += chunk.len) {
-        try fx.feedOutput(job_spawn_key, chunk);
+        try fx.feedOutput(job_spawn_key, &chunk);
     }
     try fx.feedExit(job_spawn_key, 0);
     Host.drain(fx);

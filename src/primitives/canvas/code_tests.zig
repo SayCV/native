@@ -1626,7 +1626,7 @@ test "large editable code selection repaints only visible glyphs" {
 test "direct tree code emission honors scroll viewports and later layout pages" {
     const horizontal_source = @as([65_536]u8, @splat('x'));
     const horizontal_spans = [_]canvas.TextSpan{.{
-        .text = horizontal_source,
+        .text = &horizontal_source,
         .monospace = true,
         .color = .syntax_plain,
     }};
@@ -1634,7 +1634,7 @@ test "direct tree code emission honors scroll viewports and later layout pages" 
         .id = 2,
         .kind = .text,
         .frame = geometry.RectF.init(0, 0, 400_000, 20),
-        .text = horizontal_source,
+        .text = &horizontal_source,
         .spans = &horizontal_spans,
         .text_no_wrap = true,
     }};
@@ -1887,7 +1887,7 @@ test "scaled long code line degrades under the display-list text budget" {
     const source = @as([65_536]u8, @splat('x'));
     const preceding_text = @as([20_000]u8, @splat('y'));
     const spans = [_]canvas.TextSpan{.{
-        .text = source,
+        .text = &source,
         .monospace = true,
         .color = .syntax_plain,
     }};
@@ -1901,7 +1901,7 @@ test "scaled long code line degrades under the display-list text budget" {
             .widget = .{
                 .id = 2,
                 .kind = .text,
-                .text = source,
+                .text = &source,
                 .spans = &spans,
                 .text_no_wrap = true,
                 .transform = canvas.Affine.scale(0.001, 0.001),

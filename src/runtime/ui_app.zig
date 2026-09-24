@@ -5372,7 +5372,7 @@ pub fn UiAppWithFeatures(comptime ModelT: type, comptime MsgT: type, comptime fe
                     // (`[]align(64) const u8`) and sentinel slices
                     // type-check and round-trip.
                     const alignment: ?std.mem.Alignment = comptime align_blk: {
-                        const declared = info.alignment orelse break :align_blk null;
+                        const declared = info.attrs.@"align" orelse break :align_blk null;
                         if (declared == @alignOf(info.child)) break :align_blk null;
                         break :align_blk std.mem.Alignment.fromByteUnits(declared);
                     };
