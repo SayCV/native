@@ -684,7 +684,7 @@ test "description validation" {
     try std.testing.expectError(error.InvalidDescription, validateDescription(""));
     try std.testing.expectError(error.InvalidDescription, validateDescription("two\nlines"));
     try std.testing.expectError(error.InvalidDescription, validateDescription("tab\tcharacter"));
-    try std.testing.expectError(error.InvalidDescription, validateDescription("x" ** 257));
+    try std.testing.expectError(error.InvalidDescription, validateDescription(@as([257]u8, @splat('x'))));
 }
 
 test "version validation and formatting" {
