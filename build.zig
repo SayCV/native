@@ -4272,7 +4272,9 @@ fn tsCoreAddCoreDirInputs(b: *std.Build, stage: *std.Build.Step.Run, dir_path: [
     defer walker.deinit();
     while (walker.next(b.graph.io) catch null) |entry| {
         if (entry.kind != .file or !std.mem.endsWith(u8, entry.basename, ".ts") or std.mem.endsWith(u8, entry.basename, ".d.ts")) continue;
-        const normalized = b.dupe(entry.path);
+        // Zig 0.17 `Build.dupe` returns a const slice; keep a mutable copy to
+        // normalize separators in place.
+        const normalized = b.allocator.dupe(u8, entry.path) catch @panic("OOM");
         for (normalized) |*char| if (char.* == '\\') {
             char.* = '/';
         };

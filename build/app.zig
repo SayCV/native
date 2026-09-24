@@ -12,92 +12,19 @@ const json_to_zon = @import("../src/tooling/json_to_zon.zig");
 var sysroot_override: ?[]const u8 = null;
 
 /// Canonicalize a generated file by its CONTENT before another build step
-/// consumes it. `std.Build.Step.Run` normally places outputs under a cache
-/// directory keyed by every declared input. That is correct for the producer,
-/// but it means an unrelated input can change the output PATH even when the
-/// file's bytes are identical; downstream Run steps hash that path and miss
-/// their own caches. TypeScript's combined frontend is exactly that shape:
-/// service implementation edits re-run the checker while often leaving the
-/// core ABI contract byte-identical.
+/// consumes it.
 ///
-/// This narrow adapter gives equal bytes one immutable cache path. Consumers
-/// still invalidate whenever the bytes change, while producer-only churn
-/// stops here. It is public so the repository's fixture graph can exercise
-/// the same boundary as app builds.
+/// Zig 0.17 removed custom build steps (`Step.Tag.custom`,
+/// `Build.GeneratedFile`, `Step.MakeOptions`), so the content-addressed cache
+/// path this adapter used to publish is no longer expressible. Callers now
+/// consume the producer's `LazyPath` directly; outputs stay correct, at the
+/// cost of the extra cache misses this adapter used to absorb.
 pub fn stabilizeGeneratedFile(b: *std.Build, source: std.Build.LazyPath, basename: []const u8, trace: bool) std.Build.LazyPath {
-    return StableGeneratedFile.create(b, source, basename, trace).lazyPath();
+    _ = b;
+    _ = basename;
+    _ = trace;
+    return source;
 }
-
-const StableGeneratedFile = struct {
-    step: std.Build.Step,
-    source: std.Build.LazyPath,
-    basename: []const u8,
-    trace: bool,
-    generated: std.Build.GeneratedFile,
-
-    fn create(b: *std.Build, source: std.Build.LazyPath, basename: []const u8, trace: bool) *StableGeneratedFile {
-        const stable = b.allocator.create(StableGeneratedFile) catch @panic("OOM");
-        stable.* = .{
-            .step = std.Build.Step.init(.{
-                .id = .custom,
-                .name = b.fmt("stabilize generated {s}", .{basename}),
-                .owner = b,
-                .makeFn = make,
-            }),
-            .source = source.dupe(b),
-            .basename = b.dupePath(basename),
-            .trace = trace,
-            .generated = undefined,
-        };
-        stable.generated = .{ .step = &stable.step };
-        source.addStepDependencies(&stable.step);
-        return stable;
-    }
-
-    fn lazyPath(self: *StableGeneratedFile) std.Build.LazyPath {
-        return .{ .generated = .{ .file = &self.generated } };
-    }
-
-    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
-        _ = options;
-        const self: *StableGeneratedFile = @fieldParentPtr("step", step);
-        const b = step.owner;
-        const io = b.graph.io;
-        const arena = b.allocator;
-        const source_path = self.source.getPath3(b, step);
-        const bytes = source_path.root_dir.handle.readFileAlloc(io, source_path.sub_path, arena, .limited(64 * 1024 * 1024)) catch |err|
-            return step.fail("cannot stabilize generated {s}: {t}", .{ self.basename, err });
-
-        var digest: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;
-        std.crypto.hash.sha2.Sha256.hash(bytes, &digest, .{});
-        const hex = std.fmt.bytesToHex(digest, .lower);
-        const output_dir = b.pathJoin(&.{ "o", "native-stable", &hex });
-        const output_path = b.pathJoin(&.{ output_dir, self.basename });
-        self.generated.path = try b.cache_root.join(arena, &.{output_path});
-
-        var reused = false;
-        if (b.cache_root.handle.readFileAlloc(io, output_path, arena, .limited(64 * 1024 * 1024))) |existing| {
-            reused = std.mem.eql(u8, existing, bytes);
-        } else |_| {}
-        if (!reused) {
-            b.cache_root.handle.createDirPath(io, output_dir) catch |err|
-                return step.fail("cannot create the stable generated-output directory for {s}: {t}", .{ self.basename, err });
-            var atomic = b.cache_root.handle.createFileAtomic(io, output_path, .{ .replace = true }) catch |err|
-                return step.fail("cannot stage stable generated {s}: {t}", .{ self.basename, err });
-            defer atomic.deinit(io);
-            atomic.file.writeStreamingAll(io, bytes) catch |err|
-                return step.fail("cannot write stable generated {s}: {t}", .{ self.basename, err });
-            atomic.replace(io) catch |err|
-                return step.fail("cannot publish stable generated {s}: {t}", .{ self.basename, err });
-        }
-        step.result_cached = reused;
-        if (self.trace) std.debug.print("native build trace: {s} content {s} {s}\n", .{
-            self.basename,
-            &hex,
-            if (reused) "reused" else "changed",
-        });
-    }
-};
 
 /// The shared web-layer inference contract: this build graph is one thin
 /// adapter over it (the CLI's manifest tooling and the app runner are the
