@@ -1194,7 +1194,7 @@ test "text layout caret selection and point queries have no line-count cap" {
     // with TextLayoutLineListFull and killed the app from a keystroke).
     // The streaming queries must resolve caret, selection, and hit
     // offsets for a document of any length.
-    const doc = "word\n" ** 100;
+    const doc = @as([500]u8, @bitCast(@as([100][5]u8, @splat("word\n".*))));
     const text = DrawText{
         .font_id = 1,
         .size = 10,

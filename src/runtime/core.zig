@@ -449,7 +449,7 @@ pub const Runtime = struct {
     /// twin.
     canvas_image_entries: [canvas_limits.max_registered_canvas_images]runtime_canvas_images.CanvasImageEntry = @as([canvas_limits.max_registered_canvas_images]runtime_canvas_images.CanvasImageEntry, @splat(@as(runtime_canvas_images.CanvasImageEntry, .{}))),
     canvas_image_count: usize = 0,
-    canvas_image_pixels: [canvas_limits.max_registered_canvas_images][]u8 = [_][]u8{&.{}} ** canvas_limits.max_registered_canvas_images,
+    canvas_image_pixels: [canvas_limits.max_registered_canvas_images][]u8 = @as([canvas_limits.max_registered_canvas_images][]u8, @splat([_][]u8{&.{}})),
     /// `ReferenceImage` scratch the frame planner hands to renderers
     /// each plan: the registered images plus the adopted media-surface
     /// textures (appended as `presentation_only` entries).
@@ -467,7 +467,7 @@ pub const Runtime = struct {
     /// producer outliving this runtime must never reach runtime memory.
     media_surface_entries: [canvas_limits.max_media_surface_channels]runtime_media_surface.MediaSurfaceTextureEntry = @as([canvas_limits.max_media_surface_channels]runtime_media_surface.MediaSurfaceTextureEntry, @splat(@as(runtime_media_surface.MediaSurfaceTextureEntry, .{}))),
     media_surface_count: usize = 0,
-    media_surface_pixels: [canvas_limits.max_media_surface_channels][]u8 = [_][]u8{&.{}} ** canvas_limits.max_media_surface_channels,
+    media_surface_pixels: [canvas_limits.max_media_surface_channels][]u8 = @as([canvas_limits.max_media_surface_channels][]u8, @splat([_][]u8{&.{}})),
     /// Process-unique tag stamped on mailbox slots this runtime claims
     /// (0 until the first acquire): slot ownership survives allocator
     /// address reuse across runtimes in one process.

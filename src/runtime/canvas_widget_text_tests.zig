@@ -3827,7 +3827,7 @@ test "typing into a textarea seeded with a long document survives dispatch" {
     });
 
     // ~40 source lines that wrap into even more layout lines at 180px.
-    const doc = "The quick brown fox jumps over the lazy dog.\n" ** 40;
+    const doc = @as([1800]u8, @bitCast(@as([40][45]u8, @splat("The quick brown fox jumps over the lazy dog.\n".*))));
     const textarea = canvas.Widget{
         .id = 2,
         .kind = .textarea,

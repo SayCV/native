@@ -2328,7 +2328,7 @@ test "a truncated collect routes err - a cut stdout never parses as whole" {
     Host.dispatch(fx, .run_collect);
     // Overfill the collect buffer past the engine bound; the fake
     // executor mirrors the real truncation flag.
-    const chunk = "x" ** 4096;
+    const chunk = @as([4096]u8, @splat('x'));
     var fed: usize = 0;
     while (fed <= effects_mod.max_effect_collect_bytes) : (fed += chunk.len) {
         try fx.feedOutput(job_spawn_key, chunk);
