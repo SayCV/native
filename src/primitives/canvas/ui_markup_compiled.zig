@@ -103,7 +103,7 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
             comptime {
                 if (fragment_source.len == 0) @compileError("this compiled markup view has no embedded source baseline - only CompiledMarkupView / CompiledMarkupImports fragments can register with the fragment watch");
             }
-            if (comptime builtin.mode != .Debug) return .{};
+            if (comptime builtin.mode != .debug) return .{};
             return .{
                 .key = fragmentKey(),
                 .path = path,
@@ -179,7 +179,7 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
             // parity-proven, so pixels and structural ids match until the
             // edit itself changes them; release builds compile this
             // branch out entirely.
-            if (comptime builtin.mode == .Debug) {
+            if (comptime builtin.mode == .debug) {
                 if (ui.markup_fragment_host) |host| {
                     if (host.override(host.context, fragmentKey())) |override_ptr| {
                         const live_document: *const markup.MarkupDocument = @ptrCast(@alignCast(override_ptr));
@@ -931,9 +931,9 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
                 @setEvalBranchQuota(10_000);
                 const expression = markup.parseMessageExpression(raw) orelse fail(node, markup.markdown_on_link_message);
                 if (expression.payload.len != 0) fail(node, markup.markdown_on_link_message);
-                for (@typeInfo(MsgT).@"union".fields) |field| {
-                    if (field.type == []const u8 and std.mem.eql(u8, field.name, expression.tag)) {
-                        return Ui.linkMsg(@field(std.meta.Tag(MsgT), field.name));
+                for (@typeInfo(MsgT).@"union".field_names, @typeInfo(MsgT).@"union".field_types) |field_name, field_type| {
+                    if (field_type == []const u8 and std.mem.eql(u8, field_name, expression.tag)) {
+                        return Ui.linkMsg(@field(std.meta.Tag(MsgT), field_name));
                     }
                 }
                 fail(node, markup.markdown_on_link_message);
@@ -945,9 +945,9 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
                 @setEvalBranchQuota(10_000);
                 const expression = markup.parseMessageExpression(raw) orelse fail(node, markup.markdown_on_details_message);
                 if (expression.payload.len != 0) fail(node, markup.markdown_on_details_message);
-                for (@typeInfo(MsgT).@"union".fields) |field| {
-                    if (field.type == usize and std.mem.eql(u8, field.name, expression.tag)) {
-                        return Md.detailsMsg(@field(std.meta.Tag(MsgT), field.name));
+                for (@typeInfo(MsgT).@"union".field_names, @typeInfo(MsgT).@"union".field_types) |field_name, field_type| {
+                    if (field_type == usize and std.mem.eql(u8, field_name, expression.tag)) {
+                        return Md.detailsMsg(@field(std.meta.Tag(MsgT), field_name));
                     }
                 }
                 fail(node, markup.markdown_on_details_message);
@@ -2330,15 +2330,15 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
         fn inputConstructor(comptime tag: []const u8) ?Ui.InputMsgFn {
             comptime {
                 @setEvalBranchQuota(10_000);
-                for (@typeInfo(MsgT).@"union".fields) |field| {
-                    if (field.type == canvas.TextInputEvent and std.mem.eql(u8, field.name, tag)) {
-                        return Ui.inputMsg(@field(std.meta.Tag(MsgT), field.name));
+                for (@typeInfo(MsgT).@"union".field_names, @typeInfo(MsgT).@"union".field_types) |field_name, field_type| {
+                    if (field_type == canvas.TextInputEvent and std.mem.eql(u8, field_name, tag)) {
+                        return Ui.inputMsg(@field(std.meta.Tag(MsgT), field_name));
                     }
                     // A declared mirror of the event union (transpiled
                     // cores, where type identity cannot cross the emission
                     // boundary): translated at dispatch, same handler shape.
-                    if (interpreter.declaredTextInputUnion(field.type) and std.mem.eql(u8, field.name, tag)) {
-                        return Ui.translatedInputMsg(@field(std.meta.Tag(MsgT), field.name), field.type);
+                    if (interpreter.declaredTextInputUnion(field_type) and std.mem.eql(u8, field_name, tag)) {
+                        return Ui.translatedInputMsg(@field(std.meta.Tag(MsgT), field_name), field_type);
                     }
                 }
                 return null;
@@ -2348,16 +2348,16 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
         fn scrollConstructor(comptime tag: []const u8) ?Ui.ScrollMsgFn {
             comptime {
                 @setEvalBranchQuota(10_000);
-                for (@typeInfo(MsgT).@"union".fields) |field| {
-                    if (field.type == canvas.ScrollState and std.mem.eql(u8, field.name, tag)) {
-                        return Ui.scrollMsg(@field(std.meta.Tag(MsgT), field.name));
+                for (@typeInfo(MsgT).@"union".field_names, @typeInfo(MsgT).@"union".field_types) |field_name, field_type| {
+                    if (field_type == canvas.ScrollState and std.mem.eql(u8, field_name, tag)) {
+                        return Ui.scrollMsg(@field(std.meta.Tag(MsgT), field_name));
                     }
                     // A declared mirror of the scroll-state record
                     // (transpiled cores, where type identity cannot cross
                     // the emission boundary): translated at dispatch, same
                     // handler shape.
-                    if (interpreter.declaredScrollStateRecord(field.type) and std.mem.eql(u8, field.name, tag)) {
-                        return Ui.translatedScrollMsg(@field(std.meta.Tag(MsgT), field.name), field.type);
+                    if (interpreter.declaredScrollStateRecord(field_type) and std.mem.eql(u8, field_name, tag)) {
+                        return Ui.translatedScrollMsg(@field(std.meta.Tag(MsgT), field_name), field_type);
                     }
                 }
                 return null;
@@ -2367,15 +2367,15 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
         fn terminalConstructor(comptime tag: []const u8) ?Ui.TerminalMsgFn {
             comptime {
                 @setEvalBranchQuota(10_000);
-                for (@typeInfo(MsgT).@"union".fields) |field| {
-                    if (field.type == canvas.TerminalState and std.mem.eql(u8, field.name, tag)) {
-                        return Ui.terminalMsg(@field(std.meta.Tag(MsgT), field.name));
+                for (@typeInfo(MsgT).@"union".field_names, @typeInfo(MsgT).@"union".field_types) |field_name, field_type| {
+                    if (field_type == canvas.TerminalState and std.mem.eql(u8, field_name, tag)) {
+                        return Ui.terminalMsg(@field(std.meta.Tag(MsgT), field_name));
                     }
                     // A declared mirror of the terminal-state record
                     // (transpiled cores): translated at dispatch, same
                     // handler shape.
-                    if (interpreter.declaredTerminalStateRecord(field.type) and std.mem.eql(u8, field.name, tag)) {
-                        return Ui.translatedTerminalMsg(@field(std.meta.Tag(MsgT), field.name), field.type);
+                    if (interpreter.declaredTerminalStateRecord(field_type) and std.mem.eql(u8, field_name, tag)) {
+                        return Ui.translatedTerminalMsg(@field(std.meta.Tag(MsgT), field_name), field_type);
                     }
                 }
                 return null;
@@ -2388,8 +2388,8 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
         fn legacyScrollTag(comptime tag: []const u8) bool {
             comptime {
                 @setEvalBranchQuota(10_000);
-                for (@typeInfo(MsgT).@"union".fields) |field| {
-                    if (interpreter.declaredLegacyScrollStateRecord(field.type) and std.mem.eql(u8, field.name, tag)) {
+                for (@typeInfo(MsgT).@"union".field_names, @typeInfo(MsgT).@"union".field_types) |field_name, field_type| {
+                    if (interpreter.declaredLegacyScrollStateRecord(field_type) and std.mem.eql(u8, field_name, tag)) {
                         return true;
                     }
                 }
@@ -2400,16 +2400,16 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
         fn resizeConstructor(comptime tag: []const u8) ?Ui.ValueMsgFn {
             comptime {
                 @setEvalBranchQuota(10_000);
-                for (@typeInfo(MsgT).@"union".fields) |field| {
-                    if (field.type == f32 and std.mem.eql(u8, field.name, tag)) {
-                        return Ui.valueMsg(@field(std.meta.Tag(MsgT), field.name));
+                for (@typeInfo(MsgT).@"union".field_names, @typeInfo(MsgT).@"union".field_types) |field_name, field_type| {
+                    if (field_type == f32 and std.mem.eql(u8, field_name, tag)) {
+                        return Ui.valueMsg(@field(std.meta.Tag(MsgT), field_name));
                     }
                     // A declared one-number float arm (transpiled cores):
                     // the fraction widens exactly at dispatch. Integer
                     // arms stay excluded — a 0..1 fraction rounded into
                     // an integer would be silently useless data.
-                    if (field.type == f64 and std.mem.eql(u8, field.name, tag)) {
-                        return Ui.translatedValueMsg(@field(std.meta.Tag(MsgT), field.name), field.type);
+                    if (field_type == f64 and std.mem.eql(u8, field_name, tag)) {
+                        return Ui.translatedValueMsg(@field(std.meta.Tag(MsgT), field_name), field_type);
                     }
                 }
                 return null;
@@ -2423,12 +2423,12 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
         fn valueConstructor(comptime tag: []const u8) ?Ui.ValueMsgFn {
             comptime {
                 @setEvalBranchQuota(10_000);
-                for (@typeInfo(MsgT).@"union".fields) |field| {
-                    const class = interpreter.valueArmClass(field.type) orelse continue;
-                    if (!std.mem.eql(u8, field.name, tag)) continue;
+                for (@typeInfo(MsgT).@"union".field_names, @typeInfo(MsgT).@"union".field_types) |field_name, field_type| {
+                    const class = interpreter.valueArmClass(field_type) orelse continue;
+                    if (!std.mem.eql(u8, field_name, tag)) continue;
                     return switch (class) {
-                        .identity => Ui.valueMsg(@field(std.meta.Tag(MsgT), field.name)),
-                        .float => Ui.translatedValueMsg(@field(std.meta.Tag(MsgT), field.name), field.type),
+                        .identity => Ui.valueMsg(@field(std.meta.Tag(MsgT), field_name)),
+                        .float => Ui.translatedValueMsg(@field(std.meta.Tag(MsgT), field_name), field_type),
                     };
                 }
                 return null;
@@ -2438,8 +2438,8 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
         fn msgTagIndex(comptime tag: []const u8) ?usize {
             comptime {
                 @setEvalBranchQuota(10_000);
-                for (@typeInfo(MsgT).@"union".fields, 0..) |field, index| {
-                    if (std.mem.eql(u8, field.name, tag)) return index;
+                for (@typeInfo(MsgT).@"union".field_names, 0..) |field_name, index| {
+                    if (std.mem.eql(u8, field_name, tag)) return index;
                 }
                 return null;
             }
@@ -2447,19 +2447,20 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
 
         fn constructMessage(comptime node: markup.MarkupNode, comptime expression: markup.MessageExpression, comptime entries: []const ScopeEntry, ui: *Ui, model: *const ModelT, scope: anytype) MsgT {
             const tag_index = comptime (msgTagIndex(expression.tag) orelse fail(node, "unknown message tag"));
-            const field = comptime @typeInfo(MsgT).@"union".fields[tag_index];
-            if (comptime (field.type == void)) {
+            const field_name = comptime @typeInfo(MsgT).@"union".field_names[tag_index];
+            const field_type = comptime @typeInfo(MsgT).@"union".field_types[tag_index];
+            if (comptime (field_type == void)) {
                 comptime {
                     if (expression.payload.len > 0) fail(node, "message does not take a payload");
                 }
-                return @unionInit(MsgT, field.name, {});
+                return @unionInit(MsgT, field_name, {});
             }
             comptime {
                 if (expression.payload.len == 0) fail(node, "message requires a payload");
             }
             const variant = comptime pathVariant(node, entries, expression.payload, true);
             const value = bindingValue(node, entries, expression.payload, ui, model, scope, true);
-            return @unionInit(MsgT, field.name, coerce(field.type, node, variant, ui, value));
+            return @unionInit(MsgT, field_name, coerce(field_type, node, variant, ui, value));
         }
 
         fn constructDragMessage(comptime node: markup.MarkupNode, comptime expression: markup.MessageExpression, comptime entries: []const ScopeEntry, ui: *Ui, model: *const ModelT, scope: anytype) MsgT {
@@ -2467,15 +2468,16 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
                 if (expression.payload.len == 0) fail(node, markup.on_drag_payload_message);
             }
             const tag_index = comptime (msgTagIndex(expression.tag) orelse fail(node, markup.on_drag_payload_message));
-            const field = comptime @typeInfo(MsgT).@"union".fields[tag_index];
+            const field_name = comptime @typeInfo(MsgT).@"union".field_names[tag_index];
+            const field_type = comptime @typeInfo(MsgT).@"union".field_types[tag_index];
             comptime {
-                if (!interpreter.declaredWidgetDragDropRecord(field.type)) fail(node, markup.on_drag_payload_message);
+                if (!interpreter.declaredWidgetDragDropRecord(field_type)) fail(node, markup.on_drag_payload_message);
             }
             const variant = comptime pathVariant(node, entries, expression.payload, true);
             const value = bindingValue(node, entries, expression.payload, ui, model, scope, true);
-            var payload: field.type = std.mem.zeroes(field.type);
-            payload.sourceId = coerce(@FieldType(field.type, "sourceId"), node, variant, ui, value);
-            return @unionInit(MsgT, field.name, payload);
+            var payload: field_type = std.mem.zeroes(field_type);
+            payload.sourceId = coerce(@FieldType(field_type, "sourceId"), node, variant, ui, value);
+            return @unionInit(MsgT, field_name, payload);
         }
 
         /// Runtime mirror of the interpreter's `coerce`, with the
@@ -2805,7 +2807,7 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
                     const DeclType = @TypeOf(@field(T, decl));
                     switch (@typeInfo(DeclType)) {
                         .@"fn" => |fn_info| {
-                            if (fn_info.params.len == 1 and fn_info.return_type != null and fn_info.params[0].type == *const T) {
+                            if (fn_info.param_types.len == 1 and fn_info.return_type != null and fn_info.param_types[0] == *const T) {
                                 if (std.mem.eql(u8, decl, head) and tail_opt == null) {
                                     if (!supportedValue(fn_info.return_type.?)) return null;
                                     return fn_info.return_type.?;
@@ -3092,7 +3094,7 @@ fn CompiledMarkupEngine(comptime ModelT: type, comptime MsgT: type, comptime res
             return switch (comptime @typeInfo(T)) {
                 .int, .float => 0,
                 .bool => false,
-                .@"enum" => |info| @field(T, info.fields[0].name),
+                .@"enum" => |info| @field(T, info.field_names[0]),
                 .pointer => "",
                 else => comptime @compileError("no placeholder for " ++ @typeName(T)),
             };

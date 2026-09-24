@@ -536,15 +536,15 @@ test "explicit style values win over token references" {
 
 test "the style token name lists match the canvas token structs and the interpreter table" {
     // Every ColorTokens field is listed, and every listed name is a field.
-    const color_fields = @typeInfo(canvas.ColorTokens).@"struct".fields;
-    try testing.expectEqual(color_fields.len, canvas.ui_markup.known_color_token_names.len);
-    inline for (color_fields) |field| {
-        try testing.expect(nameListed(field.name, &canvas.ui_markup.known_color_token_names));
+    const color_field_names = @typeInfo(canvas.ColorTokens).@"struct".field_names;
+    try testing.expectEqual(color_field_names.len, canvas.ui_markup.known_color_token_names.len);
+    inline for (color_field_names) |field_name| {
+        try testing.expect(nameListed(field_name, &canvas.ui_markup.known_color_token_names));
     }
-    const radius_fields = @typeInfo(canvas.RadiusTokens).@"struct".fields;
-    try testing.expectEqual(radius_fields.len, canvas.ui_markup.known_radius_token_names.len);
-    inline for (radius_fields) |field| {
-        try testing.expect(nameListed(field.name, &canvas.ui_markup.known_radius_token_names));
+    const radius_field_names = @typeInfo(canvas.RadiusTokens).@"struct".field_names;
+    try testing.expectEqual(radius_field_names.len, canvas.ui_markup.known_radius_token_names.len);
+    inline for (radius_field_names) |field_name| {
+        try testing.expect(nameListed(field_name, &canvas.ui_markup.known_radius_token_names));
     }
     // The validator's attribute list matches the engines' shared table.
     try testing.expectEqual(markup_view.color_style_attr_fields.len, canvas.ui_markup.known_color_style_attrs.len);
@@ -813,30 +813,30 @@ test "axis and value-x stamp the region's scroll axes and horizontal offset" {
 test "axis value vocabulary mirrors the live ScrollAxes enum" {
     // The validator's std-only mirror of the enum's member names; a new
     // member cannot ship without its markup spelling.
-    const fields = @typeInfo(canvas.ScrollAxes).@"enum".fields;
+    const fields = @typeInfo(canvas.ScrollAxes).@"enum".field_names;
     try testing.expectEqual(fields.len, canvas.ui_markup.axis_value_names.len);
-    inline for (fields, 0..) |field, index| {
-        try testing.expectEqualStrings(field.name, canvas.ui_markup.axis_value_names[index]);
+    inline for (fields, 0..) |field_name, index| {
+        try testing.expectEqualStrings(field_name, canvas.ui_markup.axis_value_names[index]);
     }
 }
 
 test "overscroll value vocabulary mirrors the live WidgetOverscroll enum" {
     // The validator's std-only mirror of the enum's member names; a new
     // member cannot ship without its markup spelling.
-    const fields = @typeInfo(canvas.WidgetOverscroll).@"enum".fields;
+    const fields = @typeInfo(canvas.WidgetOverscroll).@"enum".field_names;
     try testing.expectEqual(fields.len, canvas.ui_markup.overscroll_value_names.len);
-    inline for (fields, 0..) |field, index| {
-        try testing.expectEqualStrings(field.name, canvas.ui_markup.overscroll_value_names[index]);
+    inline for (fields, 0..) |field_name, index| {
+        try testing.expectEqualStrings(field_name, canvas.ui_markup.overscroll_value_names[index]);
     }
 }
 
 test "overflow value vocabulary mirrors the live TextOverflow enum" {
     // The validator's std-only mirror of the enum's member names; a new
     // member cannot ship without its markup spelling.
-    const fields = @typeInfo(canvas.TextOverflow).@"enum".fields;
+    const fields = @typeInfo(canvas.TextOverflow).@"enum".field_names;
     try testing.expectEqual(fields.len, canvas.ui_markup.overflow_value_names.len);
-    inline for (fields, 0..) |field, index| {
-        try testing.expectEqualStrings(field.name, canvas.ui_markup.overflow_value_names[index]);
+    inline for (fields, 0..) |field_name, index| {
+        try testing.expectEqualStrings(field_name, canvas.ui_markup.overflow_value_names[index]);
     }
 }
 
@@ -942,20 +942,20 @@ test "tooltip-delay model binding past i32 max fails the build instead of trappi
 test "resize-easing value vocabulary mirrors the live Easing enum" {
     // The validator's std-only mirror of the enum's member names; a new
     // member cannot ship without its markup spelling.
-    const fields = @typeInfo(canvas.Easing).@"enum".fields;
+    const fields = @typeInfo(canvas.Easing).@"enum".field_names;
     try testing.expectEqual(fields.len, canvas.ui_markup.resize_easing_value_names.len);
-    inline for (fields, 0..) |field, index| {
-        try testing.expectEqualStrings(field.name, canvas.ui_markup.resize_easing_value_names[index]);
+    inline for (fields, 0..) |field_name, index| {
+        try testing.expectEqualStrings(field_name, canvas.ui_markup.resize_easing_value_names[index]);
     }
 }
 
 test "span weight vocabulary mirrors the live TextSpanWeight enum" {
     // The validator's std-only mirror of the enum's member names; a new
     // member cannot ship without its markup spelling.
-    const fields = @typeInfo(canvas.TextSpanWeight).@"enum".fields;
+    const fields = @typeInfo(canvas.TextSpanWeight).@"enum".field_names;
     try testing.expectEqual(fields.len, canvas.ui_markup.span_weight_value_names.len);
-    inline for (fields, 0..) |field, index| {
-        try testing.expectEqualStrings(field.name, canvas.ui_markup.span_weight_value_names[index]);
+    inline for (fields, 0..) |field_name, index| {
+        try testing.expectEqualStrings(field_name, canvas.ui_markup.span_weight_value_names[index]);
     }
 }
 
@@ -1041,14 +1041,14 @@ test "the registry's size vocabulary matches the live WidgetSize enum" {
     // canvas.WidgetSize; the registry's std-only mirrors (control scale +
     // text-only typography rungs) must list exactly the same names so the
     // validator and the engines accept identically.
-    const fields = std.meta.fields(canvas.WidgetSize);
+    const fields = @typeInfo(canvas.WidgetSize).@"enum".field_names;
     try testing.expectEqual(
         fields.len,
         canvas.ui_markup.schema.control_size_value_names.len + canvas.ui_markup.schema.text_size_value_names.len,
     );
-    inline for (fields) |field| {
-        const in_control = nameListed(field.name, &canvas.ui_markup.schema.control_size_value_names);
-        const in_text = nameListed(field.name, &canvas.ui_markup.schema.text_size_value_names);
+    inline for (fields) |field_name| {
+        const in_control = nameListed(field_name, &canvas.ui_markup.schema.control_size_value_names);
+        const in_text = nameListed(field_name, &canvas.ui_markup.schema.text_size_value_names);
         // Every enum member sits on exactly one axis.
         try testing.expect(in_control != in_text);
     }
@@ -1518,10 +1518,10 @@ test "the registry's role vocabulary matches the live WidgetRole enum" {
     // role="..." values resolve through std.meta.stringToEnum on
     // canvas.WidgetRole; the registry's std-only mirror must list exactly
     // the same names so the validator and the engines accept identically.
-    const fields = std.meta.fields(canvas.WidgetRole);
+    const fields = @typeInfo(canvas.WidgetRole).@"enum".field_names;
     try testing.expectEqual(fields.len, canvas.ui_markup.schema.role_names.len);
-    inline for (fields) |field| {
-        try testing.expect(nameListed(field.name, &canvas.ui_markup.schema.role_names));
+    inline for (fields) |field_name| {
+        try testing.expect(nameListed(field_name, &canvas.ui_markup.schema.role_names));
     }
     // Container roles are a subset of the vocabulary.
     for (canvas.ui_markup.schema.container_role_names) |name| {

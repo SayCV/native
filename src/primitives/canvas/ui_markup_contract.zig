@@ -297,7 +297,7 @@ fn describeIterables(comptime Model: type) []const Iterable {
                 iterables = iterables ++ &[_]Iterable{entry};
             }
         }
-        for (@typeInfo(Model).@"struct".decl_namess) |decl| {
+        for (@typeInfo(Model).@"struct".decl_names) |decl| {
             const DeclType = @TypeOf(@field(Model, decl));
             if (reflect.sliceElement(DeclType)) |Item| {
                 var entry = describeItem(Item);
@@ -376,8 +376,8 @@ fn optOutNames(comptime T: type) []const []const u8 {
         switch (@typeInfo(V)) {
             .@"struct" => |info| {
                 if (!info.is_tuple) @compileError(teaching);
-                for (info.fields) |field| {
-                    const name: []const u8 = @field(value, field.name);
+                for (info.field_names) |field_name| {
+                    const name: []const u8 = @field(value, field_name);
                     names = names ++ &[_][]const u8{name};
                 }
             },

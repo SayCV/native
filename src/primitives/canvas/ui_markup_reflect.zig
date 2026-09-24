@@ -26,9 +26,9 @@ const schema = @import("ui_schema.zig");
 /// guard.
 pub fn typeScanQuota(comptime T: type) u32 {
     const entries: u32 = switch (@typeInfo(T)) {
-        .@"struct" => |info| @intCast(info.fields.len + info.decls.len),
-        .@"union" => |info| @intCast(info.fields.len + info.decls.len),
-        .@"enum" => |info| @intCast(info.fields.len + info.decls.len),
+        .@"struct" => |info| @intCast(info.field_names.len + info.decl_names.len),
+        .@"union" => |info| @intCast(info.field_names.len + info.decl_names.len),
+        .@"enum" => |info| @intCast(info.field_names.len + info.decl_names.len),
         else => 0,
     };
     return 2000 + entries * 64 + entries * entries;
@@ -44,7 +44,7 @@ pub fn typeScanQuota(comptime T: type) u32 {
 /// mutation channel.
 pub fn Pointee(comptime T: type) type {
     return switch (@typeInfo(T)) {
-        .pointer => |info| if (info.size == .one and info.is_const) Pointee(info.child) else T,
+        .pointer => |info| if (info.size == .one and info.attrs.@"const") Pointee(info.child) else T,
         else => T,
     };
 }
@@ -67,16 +67,16 @@ pub fn isItemFn(comptime DeclType: type, comptime Item: type, comptime with_aren
         .@"fn" => |fn_info| fn_info,
         else => return false,
     };
-    if (info.params.len == 0 or info.params[0].type == null) return false;
-    switch (@typeInfo(info.params[0].type.?)) {
+    if (info.param_types.len == 0 or info.param_types[0] == null) return false;
+    switch (@typeInfo(info.param_types[0].?)) {
         .pointer => {},
         else => return false,
     }
     const expected_params: usize = if (with_arena) 2 else 1;
-    if (info.params.len != expected_params) return false;
+    if (info.param_types.len != expected_params) return false;
     const Return = info.return_type orelse return false;
     if (sliceElement(Return) != Item) return false;
-    if (with_arena and info.params[1].type != std.mem.Allocator) return false;
+    if (with_arena and info.param_types[1] != std.mem.Allocator) return false;
     return true;
 }
 
@@ -89,9 +89,9 @@ pub fn isArenaScalarFn(comptime T: type, comptime DeclType: type) bool {
         .@"fn" => |fn_info| fn_info,
         else => return false,
     };
-    if (info.params.len != 2 or info.return_type == null) return false;
-    if (info.params[0].type != *const T) return false;
-    return info.params[1].type == std.mem.Allocator;
+    if (info.param_types.len != 2 or info.return_type == null) return false;
+    if (info.param_types[0] != *const T) return false;
+    return info.param_types[1] == std.mem.Allocator;
 }
 
 /// A zero-arg scalar binding fn: `fn (self: *const T) V`.
@@ -100,7 +100,7 @@ pub fn isZeroArgFn(comptime T: type, comptime DeclType: type) bool {
         .@"fn" => |fn_info| fn_info,
         else => return false,
     };
-    return info.params.len == 1 and info.return_type != null and info.params[0].type == *const T;
+    return info.param_types.len == 1 and info.return_type != null and info.param_types[0] == *const T;
 }
 
 /// The canvas `TextInputEvent` union's tag vocabulary, pinned here so the
@@ -143,20 +143,20 @@ pub fn declaredTextInputUnion(comptime T: type) bool {
         else => return false,
     };
     if (info.tag_type == null) return false;
-    if (info.fields.len != text_input_event_tags.len) return false;
+    if (info.field_names.len != text_input_event_tags.len) return false;
     inline for (text_input_event_tags) |tag| {
         if (!@hasField(T, tag)) return false;
     }
-    inline for (info.fields) |field| {
-        if (comptime std.mem.eql(u8, field.name, "insert_text")) {
-            if (!isBytes(field.type)) return false;
-        } else if (comptime std.mem.eql(u8, field.name, "move_caret")) {
-            if (!isCaretMoveRecord(field.type)) return false;
-        } else if (comptime std.mem.eql(u8, field.name, "set_selection")) {
-            if (!isSelectionRecord(field.type)) return false;
-        } else if (comptime std.mem.eql(u8, field.name, "set_composition")) {
-            if (!isCompositionRecord(field.type)) return false;
-        } else if (field.type != void) {
+    inline for (info.field_names, info.field_types) |field_name, field_type| {
+        if (comptime std.mem.eql(u8, field_name, "insert_text")) {
+            if (!isBytes(field_type)) return false;
+        } else if (comptime std.mem.eql(u8, field_name, "move_caret")) {
+            if (!isCaretMoveRecord(field_type)) return false;
+        } else if (comptime std.mem.eql(u8, field_name, "set_selection")) {
+            if (!isSelectionRecord(field_type)) return false;
+        } else if (comptime std.mem.eql(u8, field_name, "set_composition")) {
+            if (!isCompositionRecord(field_type)) return false;
+        } else if (field_type != void) {
             return false;
         }
     }
@@ -213,7 +213,7 @@ fn declaredRecordMatchesVocabulary(comptime T: type, comptime canvas_names: []co
         .@"struct" => |s| s,
         else => return false,
     };
-    if (info.fields.len != canvas_names.len) return false;
+    if (info.field_names.len != canvas_names.len) return false;
     const canvas_spelling = comptime blk: {
         for (canvas_names) |name| {
             if (!@hasField(T, name)) break :blk false;
@@ -227,8 +227,8 @@ fn declaredRecordMatchesVocabulary(comptime T: type, comptime canvas_names: []co
         break :blk true;
     };
     if (!canvas_spelling and !ts_spelling) return false;
-    inline for (info.fields) |field| {
-        if (!isNumeric(field.type)) return false;
+    inline for (info.field_types) |field_type| {
+        if (!isNumeric(field_type)) return false;
     }
     return true;
 }
@@ -268,7 +268,7 @@ pub fn declaredWidgetDragDropRecord(comptime T: type) bool {
         .@"struct" => |s| s,
         else => return false,
     };
-    if (info.fields.len != 6) return false;
+    if (info.field_names.len != 6) return false;
     if (!@hasField(T, "sourceId") or !@hasField(T, "phase") or !@hasField(T, "x") or !@hasField(T, "y") or
         !@hasField(T, "viewWidth") or !@hasField(T, "viewHeight")) return false;
     if (!isNumeric(@FieldType(T, "sourceId"))) return false;
@@ -330,7 +330,7 @@ pub fn valueArmClass(comptime T: type) ?ValueArmClass {
 
 fn isBytes(comptime T: type) bool {
     return switch (@typeInfo(T)) {
-        .pointer => |info| info.size == .slice and info.child == u8 and info.is_const,
+        .pointer => |info| info.size == .slice and info.child == u8 and info.attrs.@"const",
         else => false,
     };
 }
@@ -347,19 +347,19 @@ fn isCaretMoveRecord(comptime T: type) bool {
         .@"struct" => |s| s,
         else => return false,
     };
-    if (info.fields.len != 2) return false;
+    if (info.field_names.len != 2) return false;
     if (!@hasField(T, "direction") or !@hasField(T, "extend")) return false;
-    inline for (info.fields) |field| {
-        if (comptime std.mem.eql(u8, field.name, "extend")) {
-            if (field.type != bool) return false;
+    inline for (info.field_names, info.field_types) |field_name, field_type| {
+        if (comptime std.mem.eql(u8, field_name, "extend")) {
+            if (field_type != bool) return false;
         } else {
-            const members = switch (@typeInfo(field.type)) {
-                .@"enum" => |e| e.fields,
+            const members = switch (@typeInfo(field_type)) {
+                .@"enum" => |e| e.field_names,
                 else => return false,
             };
             if (members.len != text_caret_direction_members.len) return false;
             inline for (text_caret_direction_members) |name| {
-                if (!@hasField(field.type, name)) return false;
+                if (!@hasField(field_type, name)) return false;
             }
         }
     }
@@ -371,23 +371,23 @@ fn isSelectionRecord(comptime T: type) bool {
         .@"struct" => |s| s,
         else => return false,
     };
-    if (info.fields.len != 2 and info.fields.len != 3) return false;
+    if (info.field_names.len != 2 and info.field_names.len != 3) return false;
     if (!@hasField(T, "anchor") or !@hasField(T, "focus")) return false;
-    inline for (info.fields) |field| {
-        if (comptime std.mem.eql(u8, field.name, "affinity")) {
-            const members = switch (@typeInfo(field.type)) {
-                .@"enum" => |e| e.fields,
+    inline for (info.field_names, info.field_types) |field_name, field_type| {
+        if (comptime std.mem.eql(u8, field_name, "affinity")) {
+            const members = switch (@typeInfo(field_type)) {
+                .@"enum" => |e| e.field_names,
                 else => return false,
             };
             if (members.len != text_caret_affinity_members.len) return false;
             inline for (text_caret_affinity_members) |name| {
-                if (!@hasField(field.type, name)) return false;
+                if (!@hasField(field_type, name)) return false;
             }
-        } else if (!isNumeric(field.type)) {
+        } else if (!isNumeric(field_type)) {
             return false;
         }
     }
-    if (info.fields.len == 3 and !@hasField(T, "affinity")) return false;
+    if (info.field_names.len == 3 and !@hasField(T, "affinity")) return false;
     return true;
 }
 
@@ -396,13 +396,13 @@ fn isCompositionRecord(comptime T: type) bool {
         .@"struct" => |s| s,
         else => return false,
     };
-    if (info.fields.len != 2) return false;
+    if (info.field_names.len != 2) return false;
     if (!@hasField(T, "text") or !@hasField(T, "cursor")) return false;
-    inline for (info.fields) |field| {
-        if (comptime std.mem.eql(u8, field.name, "text")) {
-            if (!isBytes(field.type)) return false;
+    inline for (info.field_names, info.field_types) |field_name, field_type| {
+        if (comptime std.mem.eql(u8, field_name, "text")) {
+            if (!isBytes(field_type)) return false;
         } else {
-            const inner = switch (@typeInfo(field.type)) {
+            const inner = switch (@typeInfo(field_type)) {
                 .optional => |o| o.child,
                 else => return false,
             };

@@ -74,8 +74,8 @@ pub fn describe(comptime T: type) []const u8 {
                     "union(" ++ describe(tag) ++ "){"
                 else
                     "union{";
-                for (info.fields) |field| {
-                    out = out ++ field.name ++ ":" ++ describe(field.type) ++ ",";
+                for (info.field_names, info.field_types) |field_name, field_type| {
+                    out = out ++ field_name ++ ":" ++ describe(field_type) ++ ",";
                 }
                 return out ++ "}";
             },

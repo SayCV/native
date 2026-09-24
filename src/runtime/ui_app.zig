@@ -114,7 +114,7 @@ pub fn UiAppWithFeatures(comptime ModelT: type, comptime MsgT: type, comptime fe
         /// engine (the interpreter that builds reloaded fragments) and a
         /// Debug build (the dev loop) are present; everywhere else its
         /// state, polling, and registration collapse to nothing.
-        const fragment_watch_enabled = features.runtime_markup and builtin.mode == .Debug;
+        const fragment_watch_enabled = features.runtime_markup and builtin.mode == .debug;
 
         /// Fixed budget of watched fragments per app. Registrations past
         /// it are not watched (a teaching warning names the budget when
@@ -1377,8 +1377,8 @@ pub fn UiAppWithFeatures(comptime ModelT: type, comptime MsgT: type, comptime fe
         /// `destroy`.
         pub fn create(backing: std.mem.Allocator, options: Options) error{OutOfMemory}!*Self {
             comptime {
-                for (@typeInfo(ModelT).@"struct".field_names, @typeInfo(ModelT).@"struct".field_types) |field_name, field_type| {
-                    if (field_type == null) @compileError(
+                for (@typeInfo(ModelT).@"struct".field_names, @typeInfo(ModelT).@"struct".field_attrs) |field_name, field_attr| {
+                    if (field_attr.default_value_ptr == null) @compileError(
                         "UiApp.create default-initializes the Model in place, but Model field '" ++ field_name ++
                             "' has no default value - give every Model field a default, or use initInPlace and assign app.model through the pointer yourself",
                     );
@@ -5356,8 +5356,8 @@ pub fn UiAppWithFeatures(comptime ModelT: type, comptime MsgT: type, comptime fe
                 },
                 .@"struct" => |info| blk: {
                     var out = value;
-                    inline for (info.fields) |field| {
-                        @field(out, field.name) = try deepCopyMsgValue(field.type, @field(value, field.name), allocator, indirections);
+                    inline for (info.field_names, info.field_types) |field_name, field_type| {
+                        @field(out, field_name) = try deepCopyMsgValue(field_type, @field(value, field_name), allocator, indirections);
                     }
                     break :blk out;
                 },

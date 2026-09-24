@@ -471,7 +471,8 @@ pub fn TsCoreHost(comptime core: type) type {
             decode_fn: *const fn (operation: u16, tag: u8, bytes: []const u8) Msg,
         };
 
-        const msg_arms = @typeInfo(Msg).@"union".fields;
+        const msg_arm_names = @typeInfo(Msg).@"union".field_names;
+        const msg_arm_types = @typeInfo(Msg).@"union".field_types;
 
         const update_returns_cmd = @typeInfo(@TypeOf(core.update)).@"fn".return_type.? != *const Model;
         const init_returns_cmd = @typeInfo(@TypeOf(core.initialModel)).@"fn".return_type.? != *const Model;
@@ -3203,11 +3204,11 @@ pub fn TsCoreHost(comptime core: type) type {
         }
 
         fn msgFromTagFileStat(tag: u8, result: runtime_effects.EffectFileResult) Msg {
-            inline for (msg_arms, 0..) |arm, index| {
+            inline for (msg_arm_names, msg_arm_types, 0..) |arm_name, arm_type, index| {
                 if (tag == index) {
-                    const info = @typeInfo(arm.type);
-                    if (comptime info == .@"struct" and info.@"struct".fields.len == 3) {
-                        var payload: arm.type = undefined;
+                    const info = @typeInfo(arm_type);
+                    if (comptime info == .@"struct" and info.@"struct".field_names.len == 3) {
+                        var payload: arm_type = undefined;
                         inline for (info.@"struct".field_names, info.@"struct".field_types) |field_name, field_type| {
                             if (comptime std.mem.eql(u8, field_name, "exists") and field_type == bool) {
                                 @field(payload, field_name) = result.exists;
@@ -3217,7 +3218,7 @@ pub fn TsCoreHost(comptime core: type) type {
                                 @field(payload, field_name) = if (comptime field_type == f64) @floatFromInt(result.mtime_ms) else @intCast(result.mtime_ms);
                             } else @panic("ts core host: stat_file ok arm has the wrong fields");
                         }
-                        return @unionInit(Msg, arm.name, payload);
+                        return @unionInit(Msg, arm_name, payload);
                     }
                     @panic("ts core host: stat_file ok arm must be { exists, size, mtimeMs }");
                 }
@@ -3477,14 +3478,14 @@ pub fn TsCoreHost(comptime core: type) type {
         /// scratch, and the commit walkers only copy frame-resident
         /// pointers into the model heap.
         fn msgFromTagBytes(tag: u8, bytes: []const u8) Msg {
-            inline for (msg_arms, 0..) |arm, index| {
+            inline for (msg_arm_names, msg_arm_types, 0..) |arm_name, arm_type, index| {
                 if (tag == index) {
-                    if (comptime arm.type == []const u8) {
+                    if (comptime arm_type == []const u8) {
                         const copy = core.rt.frameAlloc(u8, bytes.len);
                         @memcpy(copy, bytes);
-                        return @unionInit(Msg, arm.name, copy);
+                        return @unionInit(Msg, arm_name, copy);
                     }
-                    @panic("ts core host: a routed result targets Msg arm '" ++ arm.name ++ "', whose payload is not bytes");
+                    @panic("ts core host: a routed result targets Msg arm '" ++ arm_name ++ "', whose payload is not bytes");
                 }
             }
             @panic("ts core host: a routed result names a Msg tag outside the union");
@@ -3498,12 +3499,12 @@ pub fn TsCoreHost(comptime core: type) type {
         /// The commit walkers keep non-frame pointers as-is, and a
         /// static string's lifetime is the program's.
         fn msgFromTagStaticBytes(tag: u8, comptime bytes: []const u8) Msg {
-            inline for (msg_arms, 0..) |arm, index| {
+            inline for (msg_arm_names, msg_arm_types, 0..) |arm_name, arm_type, index| {
                 if (tag == index) {
-                    if (comptime arm.type == []const u8) {
-                        return @unionInit(Msg, arm.name, bytes);
+                    if (comptime arm_type == []const u8) {
+                        return @unionInit(Msg, arm_name, bytes);
                     }
-                    @panic("ts core host: a routed result targets Msg arm '" ++ arm.name ++ "', whose payload is not bytes");
+                    @panic("ts core host: a routed result targets Msg arm '" ++ arm_name ++ "', whose payload is not bytes");
                 }
             }
             @panic("ts core host: a routed result names a Msg tag outside the union");
@@ -3512,12 +3513,12 @@ pub fn TsCoreHost(comptime core: type) type {
         /// Build the payload-less Msg arm at index `tag` (write_file's
         /// ok route — success carries nothing).
         fn msgFromTagVoid(tag: u8) Msg {
-            inline for (msg_arms, 0..) |arm, index| {
+            inline for (msg_arm_names, msg_arm_types, 0..) |arm_name, arm_type, index| {
                 if (tag == index) {
-                    if (comptime arm.type == void) {
-                        return @unionInit(Msg, arm.name, {});
+                    if (comptime arm_type == void) {
+                        return @unionInit(Msg, arm_name, {});
                     }
-                    @panic("ts core host: a routed result targets Msg arm '" ++ arm.name ++ "', which is not payload-less");
+                    @panic("ts core host: a routed result targets Msg arm '" ++ arm_name ++ "', which is not payload-less");
                 }
             }
             @panic("ts core host: a routed result names a Msg tag outside the union");
@@ -3532,30 +3533,31 @@ pub fn TsCoreHost(comptime core: type) type {
         /// every routed payload; the number widens into its field the
         /// way the subset's number model classes it (i64, u64, or f64).
         fn msgFromTagNumberBytes(comptime what: []const u8, comptime shape: []const u8, tag: u8, number: anytype, bytes: []const u8) Msg {
-            inline for (msg_arms, 0..) |arm, index| {
+            inline for (msg_arm_names, msg_arm_types, 0..) |arm_name, arm_type, index| {
                 if (tag == index) {
-                    const arm_info = @typeInfo(arm.type);
+                    const arm_info = @typeInfo(arm_type);
                     if (comptime arm_info == .@"struct") {
-                        const fields = arm_info.@"struct".fields;
+                        const arm_field_names = arm_info.@"struct".field_names;
+                        const arm_field_types = arm_info.@"struct".field_types;
                         const record_shape = comptime blk: {
-                            if (fields.len != 2) break :blk false;
+                            if (arm_field_names.len != 2) break :blk false;
                             var bytes_fields = 0;
                             var number_fields = 0;
-                            for (fields) |f| {
-                                if (f.type == []const u8) bytes_fields += 1;
-                                if (f.type == i64 or f.type == u64 or f.type == f64) number_fields += 1;
+                            for (arm_field_types) |arm_field_type| {
+                                if (arm_field_type == []const u8) bytes_fields += 1;
+                                if (arm_field_type == i64 or arm_field_type == u64 or arm_field_type == f64) number_fields += 1;
                             }
                             break :blk bytes_fields == 1 and number_fields == 1;
                         };
                         if (comptime record_shape) {
-                            var payload: arm.type = undefined;
-                            inline for (fields) |f| {
-                                if (comptime f.type == []const u8) {
+                            var payload: arm_type = undefined;
+                            inline for (arm_field_names, arm_field_types) |f_name, f_type| {
+                                if (comptime f_type == []const u8) {
                                     const copy = core.rt.frameAlloc(u8, bytes.len);
                                     @memcpy(copy, bytes);
-                                    @field(payload, f.name) = copy;
-                                } else if (comptime f.type == f64) {
-                                    @field(payload, f.name) = @floatFromInt(number);
+                                    @field(payload, f_name) = copy;
+                                } else if (comptime f_type == f64) {
+                                    @field(payload, f_name) = @floatFromInt(number);
                                 } else {
                                     // Exit codes carry -1 sentinels by
                                     // contract: a negative host number
@@ -3563,18 +3565,18 @@ pub fn TsCoreHost(comptime core: type) type {
                                     // honest value, so the crossing
                                     // teaches instead of faulting in
                                     // the cast.
-                                    if (comptime f.type == u64) {
+                                    if (comptime f_type == u64) {
                                         if (number < 0) {
-                                            @panic("ts core host: a negative number reached the u64-classed field '" ++ f.name ++ "' of Msg arm '" ++ arm.name ++ "' — the unsigned class cannot carry it; declare the field i64 or f64");
+                                            @panic("ts core host: a negative number reached the u64-classed field '" ++ f_name ++ "' of Msg arm '" ++ arm_name ++ "' — the unsigned class cannot carry it; declare the field i64 or f64");
                                         }
                                     }
-                                    @field(payload, f.name) = @intCast(number);
+                                    @field(payload, f_name) = @intCast(number);
                                 }
                             }
-                            return @unionInit(Msg, arm.name, payload);
+                            return @unionInit(Msg, arm_name, payload);
                         }
                     }
-                    @panic("ts core host: a " ++ what ++ " targets Msg arm '" ++ arm.name ++ "', which is not a " ++ shape ++ " record");
+                    @panic("ts core host: a " ++ what ++ " targets Msg arm '" ++ arm_name ++ "', which is not a " ++ shape ++ " record");
                 }
             }
             @panic("ts core host: a " ++ what ++ " names a Msg tag outside the union");
@@ -3588,18 +3590,19 @@ pub fn TsCoreHost(comptime core: type) type {
         fn audioArmShape(comptime T: type) bool {
             const info = @typeInfo(T);
             if (info != .@"struct") return false;
-            const fields = info.@"struct".fields;
-            if (fields.len != 6) return false;
+            const field_names = info.@"struct".field_names;
+            const field_types = info.@"struct".field_types;
+            if (field_names.len != 6) return false;
             var ok = true;
-            for (fields) |f| {
-                if (std.mem.eql(u8, f.name, "state")) {
-                    if (@typeInfo(f.type) != .@"enum") ok = false;
-                } else if (std.mem.eql(u8, f.name, "positionMs") or std.mem.eql(u8, f.name, "durationMs")) {
-                    if (f.type != i64 and f.type != u64 and f.type != f64) ok = false;
-                } else if (std.mem.eql(u8, f.name, "playing") or std.mem.eql(u8, f.name, "buffering")) {
-                    if (f.type != bool) ok = false;
-                } else if (std.mem.eql(u8, f.name, "bands")) {
-                    if (f.type != []const u8) ok = false;
+            for (field_names, field_types) |f_name, f_type| {
+                if (std.mem.eql(u8, f_name, "state")) {
+                    if (@typeInfo(f_type) != .@"enum") ok = false;
+                } else if (std.mem.eql(u8, f_name, "positionMs") or std.mem.eql(u8, f_name, "durationMs")) {
+                    if (f_type != i64 and f_type != u64 and f_type != f64) ok = false;
+                } else if (std.mem.eql(u8, f_name, "playing") or std.mem.eql(u8, f_name, "buffering")) {
+                    if (f_type != bool) ok = false;
+                } else if (std.mem.eql(u8, f_name, "bands")) {
+                    if (f_type != []const u8) ok = false;
                 } else {
                     ok = false;
                 }
@@ -3612,8 +3615,8 @@ pub fn TsCoreHost(comptime core: type) type {
         /// app's declaration order never matters to the wire).
         fn audioStateValue(comptime E: type, kind: runtime_effects.EffectAudioEventKind) E {
             const name = @tagName(kind);
-            inline for (@typeInfo(E).@"enum".fields) |f| {
-                if (std.mem.eql(u8, f.name, name)) return @enumFromInt(f.value);
+            inline for (@typeInfo(E).@"enum".field_names, @typeInfo(E).@"enum".field_values) |f_name, f_value| {
+                if (std.mem.eql(u8, f_name, name)) return @enumFromInt(f_value);
             }
             @panic("ts core host: an audio event kind has no member in the event arm's state union - the frontend's own shape check should have stopped this build");
         }
@@ -3624,31 +3627,32 @@ pub fn TsCoreHost(comptime core: type) type {
         /// millisecond fields widen the way the subset's number model
         /// classes them (i64, u64, or f64).
         fn msgFromTagAudio(tag: u8, event: runtime_effects.EffectAudio) Msg {
-            inline for (msg_arms, 0..) |arm, index| {
+            inline for (msg_arm_names, msg_arm_types, 0..) |arm_name, arm_type, index| {
                 if (tag == index) {
-                    if (comptime audioArmShape(arm.type)) {
-                        const fields = @typeInfo(arm.type).@"struct".fields;
-                        var payload: arm.type = undefined;
-                        inline for (fields) |f| {
-                            if (comptime std.mem.eql(u8, f.name, "state")) {
-                                @field(payload, f.name) = audioStateValue(f.type, event.kind);
-                            } else if (comptime std.mem.eql(u8, f.name, "positionMs")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.position_ms) else @intCast(event.position_ms);
-                            } else if (comptime std.mem.eql(u8, f.name, "durationMs")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.duration_ms) else @intCast(event.duration_ms);
-                            } else if (comptime std.mem.eql(u8, f.name, "playing")) {
-                                @field(payload, f.name) = event.playing;
-                            } else if (comptime std.mem.eql(u8, f.name, "buffering")) {
-                                @field(payload, f.name) = event.buffering;
+                    if (comptime audioArmShape(arm_type)) {
+                        const field_names = @typeInfo(arm_type).@"struct".field_names;
+                        const field_types = @typeInfo(arm_type).@"struct".field_types;
+                        var payload: arm_type = undefined;
+                        inline for (field_names, field_types) |f_name, f_type| {
+                            if (comptime std.mem.eql(u8, f_name, "state")) {
+                                @field(payload, f_name) = audioStateValue(f_type, event.kind);
+                            } else if (comptime std.mem.eql(u8, f_name, "positionMs")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.position_ms) else @intCast(event.position_ms);
+                            } else if (comptime std.mem.eql(u8, f_name, "durationMs")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.duration_ms) else @intCast(event.duration_ms);
+                            } else if (comptime std.mem.eql(u8, f_name, "playing")) {
+                                @field(payload, f_name) = event.playing;
+                            } else if (comptime std.mem.eql(u8, f_name, "buffering")) {
+                                @field(payload, f_name) = event.buffering;
                             } else {
                                 const copy = core.rt.frameAlloc(u8, event.bands.len);
                                 @memcpy(copy, &event.bands);
-                                @field(payload, f.name) = copy;
+                                @field(payload, f_name) = copy;
                             }
                         }
-                        return @unionInit(Msg, arm.name, payload);
+                        return @unionInit(Msg, arm_name, payload);
                     }
-                    @panic("ts core host: an audio event targets Msg arm '" ++ arm.name ++ "', which is not the six-field audio event record");
+                    @panic("ts core host: an audio event targets Msg arm '" ++ arm_name ++ "', which is not the six-field audio event record");
                 }
             }
             @panic("ts core host: an audio event names a Msg tag outside the union");
@@ -3662,18 +3666,19 @@ pub fn TsCoreHost(comptime core: type) type {
         fn videoArmShape(comptime T: type) bool {
             const info = @typeInfo(T);
             if (info != .@"struct") return false;
-            const fields = info.@"struct".fields;
-            if (fields.len != 7) return false;
+            const field_names = info.@"struct".field_names;
+            const field_types = info.@"struct".field_types;
+            if (field_names.len != 7) return false;
             var ok = true;
-            for (fields) |f| {
-                if (std.mem.eql(u8, f.name, "state")) {
-                    if (@typeInfo(f.type) != .@"enum") ok = false;
-                } else if (std.mem.eql(u8, f.name, "positionMs") or std.mem.eql(u8, f.name, "durationMs") or
-                    std.mem.eql(u8, f.name, "width") or std.mem.eql(u8, f.name, "height"))
+            for (field_names, field_types) |f_name, f_type| {
+                if (std.mem.eql(u8, f_name, "state")) {
+                    if (@typeInfo(f_type) != .@"enum") ok = false;
+                } else if (std.mem.eql(u8, f_name, "positionMs") or std.mem.eql(u8, f_name, "durationMs") or
+                    std.mem.eql(u8, f_name, "width") or std.mem.eql(u8, f_name, "height"))
                 {
-                    if (f.type != i64 and f.type != u64 and f.type != f64) ok = false;
-                } else if (std.mem.eql(u8, f.name, "playing") or std.mem.eql(u8, f.name, "buffering")) {
-                    if (f.type != bool) ok = false;
+                    if (f_type != i64 and f_type != u64 and f_type != f64) ok = false;
+                } else if (std.mem.eql(u8, f_name, "playing") or std.mem.eql(u8, f_name, "buffering")) {
+                    if (f_type != bool) ok = false;
                 } else {
                     ok = false;
                 }
@@ -3685,8 +3690,8 @@ pub fn TsCoreHost(comptime core: type) type {
         /// by member NAME — `audioStateValue`'s twin.
         fn videoStateValue(comptime E: type, kind: runtime_effects.EffectVideoEventKind) E {
             const name = @tagName(kind);
-            inline for (@typeInfo(E).@"enum".fields) |f| {
-                if (std.mem.eql(u8, f.name, name)) return @enumFromInt(f.value);
+            inline for (@typeInfo(E).@"enum".field_names, @typeInfo(E).@"enum".field_values) |f_name, f_value| {
+                if (std.mem.eql(u8, f_name, name)) return @enumFromInt(f_value);
             }
             @panic("ts core host: a video event kind has no member in the event arm's state union - the frontend's own shape check should have stopped this build");
         }
@@ -3696,31 +3701,32 @@ pub fn TsCoreHost(comptime core: type) type {
         /// fields widen the way the subset's number model classes them
         /// (i64, u64, or f64).
         fn msgFromTagVideo(tag: u8, event: runtime_effects.EffectVideo) Msg {
-            inline for (msg_arms, 0..) |arm, index| {
+            inline for (msg_arm_names, msg_arm_types, 0..) |arm_name, arm_type, index| {
                 if (tag == index) {
-                    if (comptime videoArmShape(arm.type)) {
-                        const fields = @typeInfo(arm.type).@"struct".fields;
-                        var payload: arm.type = undefined;
-                        inline for (fields) |f| {
-                            if (comptime std.mem.eql(u8, f.name, "state")) {
-                                @field(payload, f.name) = videoStateValue(f.type, event.kind);
-                            } else if (comptime std.mem.eql(u8, f.name, "positionMs")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.position_ms) else @intCast(event.position_ms);
-                            } else if (comptime std.mem.eql(u8, f.name, "durationMs")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.duration_ms) else @intCast(event.duration_ms);
-                            } else if (comptime std.mem.eql(u8, f.name, "playing")) {
-                                @field(payload, f.name) = event.playing;
-                            } else if (comptime std.mem.eql(u8, f.name, "buffering")) {
-                                @field(payload, f.name) = event.buffering;
-                            } else if (comptime std.mem.eql(u8, f.name, "width")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.width) else @intCast(event.width);
+                    if (comptime videoArmShape(arm_type)) {
+                        const field_names = @typeInfo(arm_type).@"struct".field_names;
+                        const field_types = @typeInfo(arm_type).@"struct".field_types;
+                        var payload: arm_type = undefined;
+                        inline for (field_names, field_types) |f_name, f_type| {
+                            if (comptime std.mem.eql(u8, f_name, "state")) {
+                                @field(payload, f_name) = videoStateValue(f_type, event.kind);
+                            } else if (comptime std.mem.eql(u8, f_name, "positionMs")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.position_ms) else @intCast(event.position_ms);
+                            } else if (comptime std.mem.eql(u8, f_name, "durationMs")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.duration_ms) else @intCast(event.duration_ms);
+                            } else if (comptime std.mem.eql(u8, f_name, "playing")) {
+                                @field(payload, f_name) = event.playing;
+                            } else if (comptime std.mem.eql(u8, f_name, "buffering")) {
+                                @field(payload, f_name) = event.buffering;
+                            } else if (comptime std.mem.eql(u8, f_name, "width")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.width) else @intCast(event.width);
                             } else {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.height) else @intCast(event.height);
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.height) else @intCast(event.height);
                             }
                         }
-                        return @unionInit(Msg, arm.name, payload);
+                        return @unionInit(Msg, arm_name, payload);
                     }
-                    @panic("ts core host: a video event targets Msg arm '" ++ arm.name ++ "', which is not the seven-field video event record");
+                    @panic("ts core host: a video event targets Msg arm '" ++ arm_name ++ "', which is not the seven-field video event record");
                 }
             }
             @panic("ts core host: a video event names a Msg tag outside the union");
@@ -3731,14 +3737,15 @@ pub fn TsCoreHost(comptime core: type) type {
         fn imageArmShape(comptime T: type) bool {
             const info = @typeInfo(T);
             if (info != .@"struct") return false;
-            const fields = info.@"struct".fields;
-            if (fields.len != 5) return false;
+            const field_names = info.@"struct".field_names;
+            const field_types = info.@"struct".field_types;
+            if (field_names.len != 5) return false;
             var ok = true;
-            for (fields) |f| {
-                if (std.mem.eql(u8, f.name, "state")) {
-                    if (@typeInfo(f.type) != .@"enum") ok = false;
-                } else if (std.mem.eql(u8, f.name, "id") or std.mem.eql(u8, f.name, "width") or std.mem.eql(u8, f.name, "height") or std.mem.eql(u8, f.name, "status")) {
-                    if (f.type != i64 and f.type != u64 and f.type != f64) ok = false;
+            for (field_names, field_types) |f_name, f_type| {
+                if (std.mem.eql(u8, f_name, "state")) {
+                    if (@typeInfo(f_type) != .@"enum") ok = false;
+                } else if (std.mem.eql(u8, f_name, "id") or std.mem.eql(u8, f_name, "width") or std.mem.eql(u8, f_name, "height") or std.mem.eql(u8, f_name, "status")) {
+                    if (f_type != i64 and f_type != u64 and f_type != f64) ok = false;
                 } else {
                     ok = false;
                 }
@@ -3750,8 +3757,8 @@ pub fn TsCoreHost(comptime core: type) type {
         /// matched by member NAME — `audioStateValue`'s twin.
         fn imageStateValue(comptime E: type, outcome: runtime_effects.EffectImageOutcome) E {
             const name = @tagName(outcome);
-            inline for (@typeInfo(E).@"enum".fields) |f| {
-                if (std.mem.eql(u8, f.name, name)) return @enumFromInt(f.value);
+            inline for (@typeInfo(E).@"enum".field_names, @typeInfo(E).@"enum".field_values) |f_name, f_value| {
+                if (std.mem.eql(u8, f_name, name)) return @enumFromInt(f_value);
             }
             @panic("ts core host: an image outcome has no member in the result arm's state union - the frontend's own shape check should have stopped this build");
         }
@@ -3761,27 +3768,28 @@ pub fn TsCoreHost(comptime core: type) type {
         /// echoed verbatim (always below 2^53 — the bridge refused
         /// anything wider — so both number classes carry it exactly).
         fn msgFromTagImage(tag: u8, result: runtime_effects.EffectImageResult) Msg {
-            inline for (msg_arms, 0..) |arm, index| {
+            inline for (msg_arm_names, msg_arm_types, 0..) |arm_name, arm_type, index| {
                 if (tag == index) {
-                    if (comptime imageArmShape(arm.type)) {
-                        const fields = @typeInfo(arm.type).@"struct".fields;
-                        var payload: arm.type = undefined;
-                        inline for (fields) |f| {
-                            if (comptime std.mem.eql(u8, f.name, "state")) {
-                                @field(payload, f.name) = imageStateValue(f.type, result.outcome);
-                            } else if (comptime std.mem.eql(u8, f.name, "id")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(result.id) else @intCast(result.id);
-                            } else if (comptime std.mem.eql(u8, f.name, "width")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(result.width) else @intCast(result.width);
-                            } else if (comptime std.mem.eql(u8, f.name, "height")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(result.height) else @intCast(result.height);
+                    if (comptime imageArmShape(arm_type)) {
+                        const field_names = @typeInfo(arm_type).@"struct".field_names;
+                        const field_types = @typeInfo(arm_type).@"struct".field_types;
+                        var payload: arm_type = undefined;
+                        inline for (field_names, field_types) |f_name, f_type| {
+                            if (comptime std.mem.eql(u8, f_name, "state")) {
+                                @field(payload, f_name) = imageStateValue(f_type, result.outcome);
+                            } else if (comptime std.mem.eql(u8, f_name, "id")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(result.id) else @intCast(result.id);
+                            } else if (comptime std.mem.eql(u8, f_name, "width")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(result.width) else @intCast(result.width);
+                            } else if (comptime std.mem.eql(u8, f_name, "height")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(result.height) else @intCast(result.height);
                             } else {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(result.status) else @intCast(result.status);
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(result.status) else @intCast(result.status);
                             }
                         }
-                        return @unionInit(Msg, arm.name, payload);
+                        return @unionInit(Msg, arm_name, payload);
                     }
-                    @panic("ts core host: an image result targets Msg arm '" ++ arm.name ++ "', which is not the five-field image result record");
+                    @panic("ts core host: an image result targets Msg arm '" ++ arm_name ++ "', which is not the five-field image result record");
                 }
             }
             @panic("ts core host: an image result names a Msg tag outside the union");
@@ -3794,16 +3802,17 @@ pub fn TsCoreHost(comptime core: type) type {
         fn channelArmShape(comptime T: type) bool {
             const info = @typeInfo(T);
             if (info != .@"struct") return false;
-            const fields = info.@"struct".fields;
-            if (fields.len != 5) return false;
+            const field_names = info.@"struct".field_names;
+            const field_types = info.@"struct".field_types;
+            if (field_names.len != 5) return false;
             var ok = true;
-            for (fields) |f| {
-                if (std.mem.eql(u8, f.name, "state")) {
-                    if (@typeInfo(f.type) != .@"enum") ok = false;
-                } else if (std.mem.eql(u8, f.name, "bytes")) {
-                    if (f.type != []const u8) ok = false;
-                } else if (std.mem.eql(u8, f.name, "key") or std.mem.eql(u8, f.name, "droppedPending") or std.mem.eql(u8, f.name, "droppedTotal")) {
-                    if (f.type != i64 and f.type != u64 and f.type != f64) ok = false;
+            for (field_names, field_types) |f_name, f_type| {
+                if (std.mem.eql(u8, f_name, "state")) {
+                    if (@typeInfo(f_type) != .@"enum") ok = false;
+                } else if (std.mem.eql(u8, f_name, "bytes")) {
+                    if (f_type != []const u8) ok = false;
+                } else if (std.mem.eql(u8, f_name, "key") or std.mem.eql(u8, f_name, "droppedPending") or std.mem.eql(u8, f_name, "droppedTotal")) {
+                    if (f_type != i64 and f_type != u64 and f_type != f64) ok = false;
                 } else {
                     ok = false;
                 }
@@ -3815,8 +3824,8 @@ pub fn TsCoreHost(comptime core: type) type {
         /// matched by member NAME — `imageStateValue`'s twin.
         fn channelStateValue(comptime E: type, kind: runtime_effects.EffectChannelEventKind) E {
             const name = @tagName(kind);
-            inline for (@typeInfo(E).@"enum".fields) |f| {
-                if (std.mem.eql(u8, f.name, name)) return @enumFromInt(f.value);
+            inline for (@typeInfo(E).@"enum".field_names, @typeInfo(E).@"enum".field_values) |f_name, f_value| {
+                if (std.mem.eql(u8, f_name, name)) return @enumFromInt(f_value);
             }
             @panic("ts core host: a channel event kind has no member in the event arm's state union - the frontend's own shape check should have stopped this build");
         }
@@ -3830,20 +3839,21 @@ pub fn TsCoreHost(comptime core: type) type {
         /// drop counters widen the way the subset's number model
         /// classes them.
         fn msgFromTagChannel(tag: u8, event: runtime_effects.EffectChannelEvent) Msg {
-            inline for (msg_arms, 0..) |arm, index| {
+            inline for (msg_arm_names, msg_arm_types, 0..) |arm_name, arm_type, index| {
                 if (tag == index) {
-                    if (comptime channelArmShape(arm.type)) {
-                        const fields = @typeInfo(arm.type).@"struct".fields;
-                        var payload: arm.type = undefined;
-                        inline for (fields) |f| {
-                            if (comptime std.mem.eql(u8, f.name, "state")) {
-                                @field(payload, f.name) = channelStateValue(f.type, event.kind);
-                            } else if (comptime std.mem.eql(u8, f.name, "key")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.key) else @intCast(event.key);
-                            } else if (comptime std.mem.eql(u8, f.name, "droppedPending")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.dropped_pending) else @intCast(event.dropped_pending);
-                            } else if (comptime std.mem.eql(u8, f.name, "droppedTotal")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.dropped_total) else @intCast(event.dropped_total);
+                    if (comptime channelArmShape(arm_type)) {
+                        const field_names = @typeInfo(arm_type).@"struct".field_names;
+                        const field_types = @typeInfo(arm_type).@"struct".field_types;
+                        var payload: arm_type = undefined;
+                        inline for (field_names, field_types) |f_name, f_type| {
+                            if (comptime std.mem.eql(u8, f_name, "state")) {
+                                @field(payload, f_name) = channelStateValue(f_type, event.kind);
+                            } else if (comptime std.mem.eql(u8, f_name, "key")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.key) else @intCast(event.key);
+                            } else if (comptime std.mem.eql(u8, f_name, "droppedPending")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.dropped_pending) else @intCast(event.dropped_pending);
+                            } else if (comptime std.mem.eql(u8, f_name, "droppedTotal")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.dropped_total) else @intCast(event.dropped_total);
                             } else if (event.bytes.len == 0) {
                                 // Payload-free events (rejected/closed
                                 // terminals, and the staged rejection
@@ -3851,16 +3861,16 @@ pub fn TsCoreHost(comptime core: type) type {
                                 // across the frame reset) carry the
                                 // static empty slice, never a
                                 // zero-length frame pointer.
-                                @field(payload, f.name) = "";
+                                @field(payload, f_name) = "";
                             } else {
                                 const copy = core.rt.frameAlloc(u8, event.bytes.len);
                                 @memcpy(copy, event.bytes);
-                                @field(payload, f.name) = copy;
+                                @field(payload, f_name) = copy;
                             }
                         }
-                        return @unionInit(Msg, arm.name, payload);
+                        return @unionInit(Msg, arm_name, payload);
                     }
-                    @panic("ts core host: a channel event targets Msg arm '" ++ arm.name ++ "', which is not the five-field channel event record");
+                    @panic("ts core host: a channel event targets Msg arm '" ++ arm_name ++ "', which is not the five-field channel event record");
                 }
             }
             @panic("ts core host: a channel event names a Msg tag outside the union");
@@ -3869,23 +3879,24 @@ pub fn TsCoreHost(comptime core: type) type {
         fn audioCaptureArmShape(comptime T: type) bool {
             const info = @typeInfo(T);
             if (info != .@"struct") return false;
-            const fields = info.@"struct".fields;
-            if (fields.len != 10) return false;
+            const field_names = info.@"struct".field_names;
+            const field_types = info.@"struct".field_types;
+            if (field_names.len != 10) return false;
             var ok = true;
-            for (fields) |f| {
-                if (std.mem.eql(u8, f.name, "state") or std.mem.eql(u8, f.name, "source")) {
-                    if (@typeInfo(f.type) != .@"enum") ok = false;
-                } else if (std.mem.eql(u8, f.name, "pcm")) {
-                    if (f.type != []const u8) ok = false;
-                } else if (std.mem.eql(u8, f.name, "key") or
-                    std.mem.eql(u8, f.name, "sampleRate") or
-                    std.mem.eql(u8, f.name, "channels") or
-                    std.mem.eql(u8, f.name, "timestampMs") or
-                    std.mem.eql(u8, f.name, "frames") or
-                    std.mem.eql(u8, f.name, "droppedPending") or
-                    std.mem.eql(u8, f.name, "droppedTotal"))
+            for (field_names, field_types) |f_name, f_type| {
+                if (std.mem.eql(u8, f_name, "state") or std.mem.eql(u8, f_name, "source")) {
+                    if (@typeInfo(f_type) != .@"enum") ok = false;
+                } else if (std.mem.eql(u8, f_name, "pcm")) {
+                    if (f_type != []const u8) ok = false;
+                } else if (std.mem.eql(u8, f_name, "key") or
+                    std.mem.eql(u8, f_name, "sampleRate") or
+                    std.mem.eql(u8, f_name, "channels") or
+                    std.mem.eql(u8, f_name, "timestampMs") or
+                    std.mem.eql(u8, f_name, "frames") or
+                    std.mem.eql(u8, f_name, "droppedPending") or
+                    std.mem.eql(u8, f_name, "droppedTotal"))
                 {
-                    if (f.type != i64 and f.type != u64 and f.type != f64) ok = false;
+                    if (f_type != i64 and f_type != u64 and f_type != f64) ok = false;
                 } else {
                     ok = false;
                 }
@@ -3895,56 +3906,57 @@ pub fn TsCoreHost(comptime core: type) type {
 
         fn audioCaptureStateValue(comptime E: type, kind: runtime_effects.EffectAudioCaptureEventKind) E {
             const name = @tagName(kind);
-            inline for (@typeInfo(E).@"enum".fields) |f| {
-                if (std.mem.eql(u8, f.name, name)) return @enumFromInt(f.value);
+            inline for (@typeInfo(E).@"enum".field_names, @typeInfo(E).@"enum".field_values) |f_name, f_value| {
+                if (std.mem.eql(u8, f_name, name)) return @enumFromInt(f_value);
             }
             @panic("ts core host: an audio capture event kind has no member in the event arm's state union - the frontend's own shape check should have stopped this build");
         }
 
         fn audioCaptureSourceValue(comptime E: type, source: platform.AudioCaptureSource) E {
             const name = @tagName(source);
-            inline for (@typeInfo(E).@"enum".fields) |f| {
-                if (std.mem.eql(u8, f.name, name)) return @enumFromInt(f.value);
+            inline for (@typeInfo(E).@"enum".field_names, @typeInfo(E).@"enum".field_values) |f_name, f_value| {
+                if (std.mem.eql(u8, f_name, name)) return @enumFromInt(f_value);
             }
             @panic("ts core host: an audio capture source has no member in the event arm's source union - the frontend's own shape check should have stopped this build");
         }
 
         fn msgFromTagAudioCapture(tag: u8, event: runtime_effects.EffectAudioCaptureEvent) Msg {
-            inline for (msg_arms, 0..) |arm, index| {
+            inline for (msg_arm_names, msg_arm_types, 0..) |arm_name, arm_type, index| {
                 if (tag == index) {
-                    if (comptime audioCaptureArmShape(arm.type)) {
-                        const fields = @typeInfo(arm.type).@"struct".fields;
-                        var payload: arm.type = undefined;
-                        inline for (fields) |f| {
-                            if (comptime std.mem.eql(u8, f.name, "state")) {
-                                @field(payload, f.name) = audioCaptureStateValue(f.type, event.kind);
-                            } else if (comptime std.mem.eql(u8, f.name, "source")) {
-                                @field(payload, f.name) = audioCaptureSourceValue(f.type, event.source);
-                            } else if (comptime std.mem.eql(u8, f.name, "key")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.key) else @intCast(event.key);
-                            } else if (comptime std.mem.eql(u8, f.name, "sampleRate")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.sample_rate) else @intCast(event.sample_rate);
-                            } else if (comptime std.mem.eql(u8, f.name, "channels")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.channels) else @intCast(event.channels);
-                            } else if (comptime std.mem.eql(u8, f.name, "timestampMs")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.timestamp_ms) else @intCast(event.timestamp_ms);
-                            } else if (comptime std.mem.eql(u8, f.name, "frames")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.frames) else @intCast(event.frames);
-                            } else if (comptime std.mem.eql(u8, f.name, "droppedPending")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.dropped_pending) else @intCast(event.dropped_pending);
-                            } else if (comptime std.mem.eql(u8, f.name, "droppedTotal")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.dropped_total) else @intCast(event.dropped_total);
+                    if (comptime audioCaptureArmShape(arm_type)) {
+                        const field_names = @typeInfo(arm_type).@"struct".field_names;
+                        const field_types = @typeInfo(arm_type).@"struct".field_types;
+                        var payload: arm_type = undefined;
+                        inline for (field_names, field_types) |f_name, f_type| {
+                            if (comptime std.mem.eql(u8, f_name, "state")) {
+                                @field(payload, f_name) = audioCaptureStateValue(f_type, event.kind);
+                            } else if (comptime std.mem.eql(u8, f_name, "source")) {
+                                @field(payload, f_name) = audioCaptureSourceValue(f_type, event.source);
+                            } else if (comptime std.mem.eql(u8, f_name, "key")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.key) else @intCast(event.key);
+                            } else if (comptime std.mem.eql(u8, f_name, "sampleRate")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.sample_rate) else @intCast(event.sample_rate);
+                            } else if (comptime std.mem.eql(u8, f_name, "channels")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.channels) else @intCast(event.channels);
+                            } else if (comptime std.mem.eql(u8, f_name, "timestampMs")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.timestamp_ms) else @intCast(event.timestamp_ms);
+                            } else if (comptime std.mem.eql(u8, f_name, "frames")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.frames) else @intCast(event.frames);
+                            } else if (comptime std.mem.eql(u8, f_name, "droppedPending")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.dropped_pending) else @intCast(event.dropped_pending);
+                            } else if (comptime std.mem.eql(u8, f_name, "droppedTotal")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.dropped_total) else @intCast(event.dropped_total);
                             } else if (event.pcm_s16le.len == 0) {
-                                @field(payload, f.name) = "";
+                                @field(payload, f_name) = "";
                             } else {
                                 const copy = core.rt.frameAlloc(u8, event.pcm_s16le.len);
                                 @memcpy(copy, event.pcm_s16le);
-                                @field(payload, f.name) = copy;
+                                @field(payload, f_name) = copy;
                             }
                         }
-                        return @unionInit(Msg, arm.name, payload);
+                        return @unionInit(Msg, arm_name, payload);
                     }
-                    @panic("ts core host: an audio capture event targets Msg arm '" ++ arm.name ++ "', which is not the ten-field audio capture event record");
+                    @panic("ts core host: an audio capture event targets Msg arm '" ++ arm_name ++ "', which is not the ten-field audio capture event record");
                 }
             }
             @panic("ts core host: an audio capture event names a Msg tag outside the union");
@@ -3957,22 +3969,23 @@ pub fn TsCoreHost(comptime core: type) type {
         fn ptyArmShape(comptime T: type) bool {
             const info = @typeInfo(T);
             if (info != .@"struct") return false;
-            const fields = info.@"struct".fields;
-            if (fields.len != 7) return false;
+            const field_names = info.@"struct".field_names;
+            const field_types = info.@"struct".field_types;
+            if (field_names.len != 7) return false;
             var ok = true;
-            for (fields) |f| {
-                if (std.mem.eql(u8, f.name, "state") or std.mem.eql(u8, f.name, "reason")) {
-                    if (@typeInfo(f.type) != .@"enum") ok = false;
-                } else if (std.mem.eql(u8, f.name, "bytes") or std.mem.eql(u8, f.name, "key")) {
-                    if (f.type != []const u8) ok = false;
-                } else if (std.mem.eql(u8, f.name, "code")) {
+            for (field_names, field_types) |f_name, f_type| {
+                if (std.mem.eql(u8, f_name, "state") or std.mem.eql(u8, f_name, "reason")) {
+                    if (@typeInfo(f_type) != .@"enum") ok = false;
+                } else if (std.mem.eql(u8, f_name, "bytes") or std.mem.eql(u8, f_name, "key")) {
+                    if (f_type != []const u8) ok = false;
+                } else if (std.mem.eql(u8, f_name, "code")) {
                     // Non-exited terminals deliver the -1 code sentinel:
                     // signed by contract, so the unsigned class cannot
                     // carry it. `signal` stays zero-or-positive (the
                     // fatal signal number, else 0) and takes any class.
-                    if (f.type != i64 and f.type != f64) ok = false;
-                } else if (std.mem.eql(u8, f.name, "signal") or std.mem.eql(u8, f.name, "droppedWrites")) {
-                    if (f.type != i64 and f.type != u64 and f.type != f64) ok = false;
+                    if (f_type != i64 and f_type != f64) ok = false;
+                } else if (std.mem.eql(u8, f_name, "signal") or std.mem.eql(u8, f_name, "droppedWrites")) {
+                    if (f_type != i64 and f_type != u64 and f_type != f64) ok = false;
                 } else {
                     ok = false;
                 }
@@ -3984,8 +3997,8 @@ pub fn TsCoreHost(comptime core: type) type {
         /// matched by member NAME — `channelStateValue`'s twin.
         fn ptyStateValue(comptime E: type, kind: runtime_effects.EffectPtyEventKind) E {
             const name = @tagName(kind);
-            inline for (@typeInfo(E).@"enum".fields) |f| {
-                if (std.mem.eql(u8, f.name, name)) return @enumFromInt(f.value);
+            inline for (@typeInfo(E).@"enum".field_names, @typeInfo(E).@"enum".field_values) |f_name, f_value| {
+                if (std.mem.eql(u8, f_name, name)) return @enumFromInt(f_value);
             }
             @panic("ts core host: a pty event kind has no member in the event arm's state union - the frontend's own shape check should have stopped this build");
         }
@@ -3994,8 +4007,8 @@ pub fn TsCoreHost(comptime core: type) type {
         /// by member NAME — the state member's twin.
         fn ptyReasonValue(comptime E: type, reason: runtime_effects.EffectExitReason) E {
             const name = @tagName(reason);
-            inline for (@typeInfo(E).@"enum".fields) |f| {
-                if (std.mem.eql(u8, f.name, name)) return @enumFromInt(f.value);
+            inline for (@typeInfo(E).@"enum".field_names, @typeInfo(E).@"enum".field_values) |f_name, f_value| {
+                if (std.mem.eql(u8, f_name, name)) return @enumFromInt(f_value);
             }
             @panic("ts core host: a pty exit reason has no member in the event arm's reason union - the frontend's own shape check should have stopped this build");
         }
@@ -4008,23 +4021,24 @@ pub fn TsCoreHost(comptime core: type) type {
         /// the frame reset — carry the static empty slice, the channel
         /// record's rule.
         fn msgFromTagPty(tag: u8, wire_key: []const u8, key_durable: bool, event: runtime_effects.EffectPtyEvent) Msg {
-            inline for (msg_arms, 0..) |arm, index| {
+            inline for (msg_arm_names, msg_arm_types, 0..) |arm_name, arm_type, index| {
                 if (tag == index) {
-                    if (comptime ptyArmShape(arm.type)) {
-                        const fields = @typeInfo(arm.type).@"struct".fields;
-                        var payload: arm.type = undefined;
-                        inline for (fields) |f| {
-                            if (comptime std.mem.eql(u8, f.name, "state")) {
-                                @field(payload, f.name) = ptyStateValue(f.type, event.kind);
-                            } else if (comptime std.mem.eql(u8, f.name, "reason")) {
-                                @field(payload, f.name) = ptyReasonValue(f.type, event.reason);
-                            } else if (comptime std.mem.eql(u8, f.name, "code")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.code) else @intCast(event.code);
-                            } else if (comptime std.mem.eql(u8, f.name, "signal")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.signal) else @intCast(event.signal);
-                            } else if (comptime std.mem.eql(u8, f.name, "droppedWrites")) {
-                                @field(payload, f.name) = if (comptime f.type == f64) @floatFromInt(event.dropped_writes) else @intCast(event.dropped_writes);
-                            } else if (comptime std.mem.eql(u8, f.name, "key")) {
+                    if (comptime ptyArmShape(arm_type)) {
+                        const field_names = @typeInfo(arm_type).@"struct".field_names;
+                        const field_types = @typeInfo(arm_type).@"struct".field_types;
+                        var payload: arm_type = undefined;
+                        inline for (field_names, field_types) |f_name, f_type| {
+                            if (comptime std.mem.eql(u8, f_name, "state")) {
+                                @field(payload, f_name) = ptyStateValue(f_type, event.kind);
+                            } else if (comptime std.mem.eql(u8, f_name, "reason")) {
+                                @field(payload, f_name) = ptyReasonValue(f_type, event.reason);
+                            } else if (comptime std.mem.eql(u8, f_name, "code")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.code) else @intCast(event.code);
+                            } else if (comptime std.mem.eql(u8, f_name, "signal")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.signal) else @intCast(event.signal);
+                            } else if (comptime std.mem.eql(u8, f_name, "droppedWrites")) {
+                                @field(payload, f_name) = if (comptime f_type == f64) @floatFromInt(event.dropped_writes) else @intCast(event.dropped_writes);
+                            } else if (comptime std.mem.eql(u8, f_name, "key")) {
                                 // The app's own session key, so two sessions
                                 // sharing one event arm are told apart by this
                                 // field (never the engine key). A LIVE event
@@ -4037,25 +4051,25 @@ pub fn TsCoreHost(comptime core: type) type {
                                 // referenced directly — a frame-arena copy there
                                 // would dangle by delivery.
                                 if (wire_key.len == 0) {
-                                    @field(payload, f.name) = "";
+                                    @field(payload, f_name) = "";
                                 } else if (key_durable) {
-                                    @field(payload, f.name) = wire_key;
+                                    @field(payload, f_name) = wire_key;
                                 } else {
                                     const copy = core.rt.frameAlloc(u8, wire_key.len);
                                     @memcpy(copy, wire_key);
-                                    @field(payload, f.name) = copy;
+                                    @field(payload, f_name) = copy;
                                 }
                             } else if (event.bytes.len == 0) {
-                                @field(payload, f.name) = "";
+                                @field(payload, f_name) = "";
                             } else {
                                 const copy = core.rt.frameAlloc(u8, event.bytes.len);
                                 @memcpy(copy, event.bytes);
-                                @field(payload, f.name) = copy;
+                                @field(payload, f_name) = copy;
                             }
                         }
-                        return @unionInit(Msg, arm.name, payload);
+                        return @unionInit(Msg, arm_name, payload);
                     }
-                    @panic("ts core host: a pty event targets Msg arm '" ++ arm.name ++ "', which is not the seven-field pty event record");
+                    @panic("ts core host: a pty event targets Msg arm '" ++ arm_name ++ "', which is not the seven-field pty event record");
                 }
             }
             @panic("ts core host: a pty event names a Msg tag outside the union");
@@ -4066,24 +4080,24 @@ pub fn TsCoreHost(comptime core: type) type {
         /// its unsigned twin — truncates the way the subset's number
         /// model does at index sites).
         fn msgFromTagNumber(tag: u8, value: f64) Msg {
-            inline for (msg_arms, 0..) |arm, index| {
+            inline for (msg_arm_names, msg_arm_types, 0..) |arm_name, arm_type, index| {
                 if (tag == index) {
-                    if (comptime arm.type == f64) {
-                        return @unionInit(Msg, arm.name, value);
-                    } else if (comptime arm.type == i64) {
-                        return @unionInit(Msg, arm.name, @intFromFloat(value));
-                    } else if (comptime arm.type == u64) {
+                    if (comptime arm_type == f64) {
+                        return @unionInit(Msg, arm_name, value);
+                    } else if (comptime arm_type == i64) {
+                        return @unionInit(Msg, arm_name, @intFromFloat(value));
+                    } else if (comptime arm_type == u64) {
                         // Clocks are signed by contract (a pre-epoch or
                         // skewed wall clock is a legal reading): when
                         // one reaches an unsigned arm there is no
                         // honest value, so the crossing teaches instead
                         // of faulting in the cast.
                         if (value < 0) {
-                            @panic("ts core host: a negative number reached the u64-classed Msg arm '" ++ arm.name ++ "' — the unsigned class cannot carry it; declare the arm i64 or f64");
+                            @panic("ts core host: a negative number reached the u64-classed Msg arm '" ++ arm_name ++ "' — the unsigned class cannot carry it; declare the arm i64 or f64");
                         }
-                        return @unionInit(Msg, arm.name, @intFromFloat(value));
+                        return @unionInit(Msg, arm_name, @intFromFloat(value));
                     }
-                    @panic("ts core host: a timestamp targets Msg arm '" ++ arm.name ++ "', whose payload is not a number");
+                    @panic("ts core host: a timestamp targets Msg arm '" ++ arm_name ++ "', whose payload is not a number");
                 }
             }
             @panic("ts core host: a timestamp names a Msg tag outside the union");

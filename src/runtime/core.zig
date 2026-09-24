@@ -449,7 +449,7 @@ pub const Runtime = struct {
     /// twin.
     canvas_image_entries: [canvas_limits.max_registered_canvas_images]runtime_canvas_images.CanvasImageEntry = @as([canvas_limits.max_registered_canvas_images]runtime_canvas_images.CanvasImageEntry, @splat(@as(runtime_canvas_images.CanvasImageEntry, .{}))),
     canvas_image_count: usize = 0,
-    canvas_image_pixels: [canvas_limits.max_registered_canvas_images][]u8 = @as([canvas_limits.max_registered_canvas_images][]u8, @splat([_][]u8{&.{}})),
+    canvas_image_pixels: [canvas_limits.max_registered_canvas_images][]u8 = @as([canvas_limits.max_registered_canvas_images][]u8, @splat(@as([]u8, &.{}))),
     /// `ReferenceImage` scratch the frame planner hands to renderers
     /// each plan: the registered images plus the adopted media-surface
     /// textures (appended as `presentation_only` entries).
@@ -467,7 +467,7 @@ pub const Runtime = struct {
     /// producer outliving this runtime must never reach runtime memory.
     media_surface_entries: [canvas_limits.max_media_surface_channels]runtime_media_surface.MediaSurfaceTextureEntry = @as([canvas_limits.max_media_surface_channels]runtime_media_surface.MediaSurfaceTextureEntry, @splat(@as(runtime_media_surface.MediaSurfaceTextureEntry, .{}))),
     media_surface_count: usize = 0,
-    media_surface_pixels: [canvas_limits.max_media_surface_channels][]u8 = @as([canvas_limits.max_media_surface_channels][]u8, @splat([_][]u8{&.{}})),
+    media_surface_pixels: [canvas_limits.max_media_surface_channels][]u8 = @as([canvas_limits.max_media_surface_channels][]u8, @splat(@as([]u8, &.{}))),
     /// Process-unique tag stamped on mailbox slots this runtime claims
     /// (0 until the first acquire): slot ownership survives allocator
     /// address reuse across runtimes in one process.
@@ -504,7 +504,7 @@ pub const Runtime = struct {
     /// constructs through a pointer.
     pub fn initAt(self: *Runtime, options: Options) void {
         inline for (@typeInfo(Runtime).@"struct".field_names, @typeInfo(Runtime).@"struct".field_types, @typeInfo(Runtime).@"struct".field_attrs) |field_name, field_type, field_attr| {
-            if (comptime fieldHasSmallDefault(field_type)) {
+            if (comptime fieldHasSmallDefault(field_type, field_attr)) {
                 @field(self, field_name) = @as(*const field_type, @ptrCast(@alignCast(field_attr.default_value_ptr.?))).*;
             }
         }
@@ -621,10 +621,10 @@ pub const Runtime = struct {
         self.media_surface_count = 0;
     }
 
-    fn fieldHasSmallDefault(comptime field: std.builtin.Type.StructField) bool {
+    fn fieldHasSmallDefault(comptime field_type: type, comptime field_attr: std.builtin.Type.Struct.FieldAttributes) bool {
         // Large fixed-capacity arrays default to undefined; skip writing
         // them so construction touches kilobytes, not megabytes.
-        return field.default_value_ptr != null and @sizeOf(field.type) <= 4096;
+        return field_attr.default_value_ptr != null and @sizeOf(field_type) <= 4096;
     }
 
     pub fn invalidate(self: *Runtime) void {

@@ -86,8 +86,8 @@ pub const ThemePack = enum {
     /// unknown names so callers can raise their own teaching error with
     /// the offending string and the valid list.
     pub fn fromName(name: []const u8) ?ThemePack {
-        inline for (@typeInfo(ThemePack).@"enum".fields) |field| {
-            if (std.mem.eql(u8, name, field.name)) return @field(ThemePack, field.name);
+        inline for (@typeInfo(ThemePack).@"enum".field_names) |field_name| {
+            if (std.mem.eql(u8, name, field_name)) return @field(ThemePack, field_name);
         }
         return null;
     }

@@ -46,8 +46,8 @@ pub fn LazyTls(comptime T: type) type {
         fn create() *T {
             const ptr = std.heap.page_allocator.create(T) catch
                 @panic("out of memory allocating per-thread canvas scratch");
-            inline for (@typeInfo(T).@"struct".field_names, @typeInfo(T).@"struct".field_values) |field_name, field_value| {
-                if (comptime field_value.defaultValue()) |value| @field(ptr, field_name) = value;
+            inline for (@typeInfo(T).@"struct".field_names, @typeInfo(T).@"struct".field_types, @typeInfo(T).@"struct".field_attrs) |field_name, field_type, field_attr| {
+                if (comptime field_attr.defaultValue(field_type)) |value| @field(ptr, field_name) = value;
             }
             instance = ptr;
             return ptr;
