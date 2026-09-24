@@ -1919,7 +1919,7 @@ test "scaled long code line degrades under the display-list text budget" {
         .size = 12,
         .origin = geometry.PointF.init(0, 0),
         .color = canvas.Color.rgb8(255, 255, 255),
-        .text = preceding_text,
+        .text = &preceding_text,
     });
     try canvas.emitWidgetLayout(
         &builder,

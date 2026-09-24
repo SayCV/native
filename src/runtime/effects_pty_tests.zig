@@ -128,7 +128,7 @@ test "pty admission: every refused spawn delivers exactly one rejected exit" {
 
     // TERM over its bound.
     const long_term = @as([effects_mod.max_effect_pty_term_bytes + 1]u8, @splat('t'));
-    fx.ptySpawn(.{ .key = 5, .argv = &.{"sh"}, .term = long_term, .on_event = DirectFx.ptyMsg(.pty) });
+    fx.ptySpawn(.{ .key = 5, .argv = &.{"sh"}, .term = &long_term, .on_event = DirectFx.ptyMsg(.pty) });
     _ = try expectExit(&fx, 5, .rejected);
 
     // A duplicate active key.

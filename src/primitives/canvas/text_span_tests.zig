@@ -761,7 +761,7 @@ test "span hit mapping and selection page beyond the first 128 visual lines" {
     // including the second layout page, into its final highlight.
     var bounded_rects: [widget_text_select.max_static_text_selection_rects]canvas.TextSelectionRect = undefined;
     const bounded = text_spans.textSpanSelectionRects(
-        paragraph,
+        &paragraph,
         &spans,
         options,
         .{ .start = 0, .end = paragraph.len },
