@@ -212,7 +212,7 @@ pub fn cellMetrics(tokens: canvas.DesignTokens) TerminalCellMetrics {
     const measured = canvas.measureTextWidthForFont(
         tokens.text_measure,
         tokens.typography.mono_font_id,
-        advance_probe,
+        &advance_probe,
         font_size,
     );
     if (measured > 0) width = measured / advance_probe_len;

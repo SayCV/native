@@ -1060,7 +1060,7 @@ fn referenceMemoHashValue(hasher: *std.hash.Wyhash, value: anytype) void {
     const T = @TypeOf(value);
     switch (@typeInfo(T)) {
         .float => {
-            const Bits = std.meta.Int(.unsigned, @bitSizeOf(T));
+            const Bits = @Int(.unsigned, @bitSizeOf(T));
             const bits: Bits = @bitCast(value);
             hasher.update(std.mem.asBytes(&bits));
         },
