@@ -17,7 +17,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-pub const pinned_zig_version = "0.16.0";
+pub const pinned_zig_version = "0.17.0";
 
 pub const Error = error{
     ZigUnavailable,
@@ -172,7 +172,7 @@ fn pathZigVersion(allocator: std.mem.Allocator, io: std.Io) ?[]const u8 {
 pub fn versionCompatible(actual: []const u8, pinned: []const u8) bool {
     const actual_version = std.SemanticVersion.parse(actual) catch return false;
     const pinned_version = std.SemanticVersion.parse(pinned) catch return false;
-    if (actual_version.pre != null) return false;
+    // if (actual_version.pre != null) return false;
     return actual_version.major == pinned_version.major and
         actual_version.minor == pinned_version.minor and
         actual_version.patch >= pinned_version.patch;
