@@ -190,8 +190,8 @@ fn enumField(comptime E: type, comptime value: []const u8, comptime what: []cons
         // enum-mapped manifest field pays a full comptime pdq sort out of
         // the shared budget. A linear name scan is a handful of branches
         // per member (length short-circuit first) and needs no map.
-        for (@typeInfo(E).@"enum".fields) |field| {
-            if (std.mem.eql(u8, field.name, value)) return @field(E, field.name);
+        for (@typeInfo(E).@"enum".field_names) |field_name| {
+            if (std.mem.eql(u8, field_name, value)) return @field(E, field_name);
         }
         @compileError("unknown app.zon " ++ what ++ " \"" ++ value ++ "\" - expected one of: " ++ memberList(E));
     }
@@ -200,8 +200,8 @@ fn enumField(comptime E: type, comptime value: []const u8, comptime what: []cons
 fn memberList(comptime E: type) []const u8 {
     comptime {
         var out: []const u8 = "";
-        for (@typeInfo(E).@"enum".fields, 0..) |field, index| {
-            out = out ++ (if (index == 0) "" else ", ") ++ field.name;
+        for (@typeInfo(E).@"enum".field_names, 0..) |field_name, index| {
+            out = out ++ (if (index == 0) "" else ", ") ++ field_name;
         }
         return out;
     }

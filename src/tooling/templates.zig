@@ -1404,7 +1404,7 @@ fn buildZig(allocator: std.mem.Allocator, names: TemplateNames, framework_path: 
         \\    // release-shaped exe — the same split `native dev`/`native build`
         \\    // apply. An explicit -Doptimize (or --release) pins both roles.
         \\    const optimize_request = b.option(std.builtin.OptimizeMode, "optimize", "Prioritize performance, safety, or binary size");
-        \\    const optimize = optimizeMode(b, optimize_request, .Debug);
+        \\    const optimize = optimizeMode(b, optimize_request, .debug);
         \\    const package_optimize = optimizeMode(b, optimize_request, .ReleaseFast);
         \\    const platform_option = b.option(PlatformOption, "platform", "Desktop backend: auto, null, macos, linux, windows") orelse .auto;
         \\    const trace_option = b.option(TraceOption, "trace", "Trace output: off, events, runtime, all") orelse .events;
@@ -1494,7 +1494,7 @@ fn buildZig(allocator: std.mem.Allocator, names: TemplateNames, framework_path: 
         \\    // console behind its window; Debug keeps the console for dev logs.
         \\    // Redirected logging still works on GUI exes - only console
         \\    // AUTO-allocation is subsystem-gated.
-        \\    if (target.result.os.tag == .windows and optimize != .Debug) {
+        \\    if (target.result.os.tag == .windows and optimize != .debug) {
         \\        exe.subsystem = .windows;
         \\    }
         \\    linkPlatform(b, target, app_mod, exe, selected_platform, web_engine, web_layer, native_sdk_path, cef_dir, cef_auto_install);
@@ -1552,7 +1552,7 @@ fn buildZig(allocator: std.mem.Allocator, names: TemplateNames, framework_path: 
         \\        });
         \\        // Same subsystem posture as the dev exe above, keyed on this
         \\        // exe's own mode: release-shaped Windows exes are GUI-subsystem.
-        \\        if (target.result.os.tag == .windows and package_optimize != .Debug) {
+        \\        if (target.result.os.tag == .windows and package_optimize != .debug) {
         \\            built.subsystem = .windows;
         \\        }
         \\        linkPlatform(b, target, package_app_mod, built, selected_platform, web_engine, web_layer, native_sdk_path, cef_dir, cef_auto_install);
@@ -4093,7 +4093,7 @@ fn readme(allocator: std.mem.Allocator, names: TemplateNames, framework_path: []
         \\
         \\Frontend:
         \\
-        \\- Type: 
+        \\- Type:
     );
     try out.appendSlice(allocator, @tagName(frontend));
     try out.appendSlice(allocator,
@@ -4248,7 +4248,7 @@ test "writeDefaultApp emits Vite project files" {
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "if (!web_layer) return;") != null);
     // Release-shaped Windows exes must be GUI-subsystem (same posture as
     // the SDK build graph) so packaged scaffold apps never flash a console.
-    try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "if (target.result.os.tag == .windows and optimize != .Debug) {") != null);
+    try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "if (target.result.os.tag == .windows and optimize != .debug) {") != null);
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "exe.subsystem = .windows;") != null);
     // The package step wraps its own release-shaped exe: Debug stays the
     // run/dev default, but `zig build package` must never ship a Debug
@@ -4257,10 +4257,10 @@ test "writeDefaultApp emits Vite project files" {
     // package exe's actual mode, and the exe carries its own
     // subsystem-posture check keyed on that mode.
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "const optimize_request = b.option(std.builtin.OptimizeMode, \"optimize\"") != null);
-    try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "const optimize = optimizeMode(b, optimize_request, .Debug);") != null);
+    try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "const optimize = optimizeMode(b, optimize_request, .debug);") != null);
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "const package_optimize = optimizeMode(b, optimize_request, .ReleaseFast);") != null);
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "const package_exe = if (package_optimize == optimize) exe else pkg: {") != null);
-    try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "if (target.result.os.tag == .windows and package_optimize != .Debug) {") != null);
+    try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "if (target.result.os.tag == .windows and package_optimize != .debug) {") != null);
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "built.subsystem = .windows;") != null);
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "package.addFileArg(package_exe.getEmittedBin());") != null);
     try std.testing.expect(std.mem.indexOf(u8, build_zig_text, "package.step.dependOn(&package_exe.step);") != null);

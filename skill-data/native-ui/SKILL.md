@@ -82,7 +82,7 @@ The runtime owns the loop: install on first GPU frame, presentation, resize, poi
 **Release: compile the markup at comptime.** `canvas.CompiledMarkupView(Model, Msg, source).build` parses the `.native` source entirely at compile time and produces the identical tree (same ids, handlers, dispatch) with no parser in the binary; markup or binding mistakes become compile errors with line/column. Hand it to `.view`, and gate the runtime engine per build mode:
 
 ```zig
-const dev = @import("builtin").mode == .Debug;
+const dev = @import("builtin").mode == .debug;
 const App = native_sdk.UiAppWithFeatures(Model, Msg, .{ .runtime_markup = dev });
 const CompiledView = canvas.CompiledMarkupView(Model, Msg, @embedFile("habits.native"));
 // options:

@@ -209,7 +209,7 @@ fn anyElement(list: anytype, comptime match: anytype) bool {
             return false;
         },
         .@"struct" => |info| {
-            if (comptime info.fields.len == 0) return false;
+            if (comptime info.field_names.len == 0) return false;
             inline for (list) |element| {
                 if (match(element)) return true;
             }

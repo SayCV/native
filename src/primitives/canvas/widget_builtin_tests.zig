@@ -2551,7 +2551,7 @@ test "built-in component catalog covers house component set" {
         "Toggle Group",
         "Tooltip",
     };
-    const enum_len = @typeInfo(BuiltinComponentKind).@"enum".fields.len;
+    const enum_len = @typeInfo(BuiltinComponentKind).@"enum".field_names.len;
     try std.testing.expectEqual(enum_len, builtinComponentCount());
     try std.testing.expectEqual(enum_len, builtin_component_names.len);
     try std.testing.expectEqual(expected_names.len, builtin_component_names.len);

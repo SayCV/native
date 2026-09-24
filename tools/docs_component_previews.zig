@@ -280,10 +280,10 @@ fn writeVocabJson(gpa: std.mem.Allocator, io: std.Io, path: []const u8) !void {
     try std.Io.Dir.cwd().writeFile(io, .{ .sub_path = path, .data = body.written() });
 }
 
-fn enumNames(comptime E: type) [@typeInfo(E).@"enum".fields.len][]const u8 {
-    const fields = @typeInfo(E).@"enum".fields;
-    var names: [fields.len][]const u8 = undefined;
-    inline for (fields, 0..) |field, index| names[index] = field.name;
+fn enumNames(comptime E: type) [@typeInfo(E).@"enum".field_names.len][]const u8 {
+    const field_names = @typeInfo(E).@"enum".field_names;
+    var names: [field_names.len][]const u8 = undefined;
+    inline for (field_names, 0..) |field_name, index| names[index] = field_name;
     return names;
 }
 

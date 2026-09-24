@@ -98,15 +98,15 @@ var model_arena_index: u1 = 0;
 /// arm index. Scale with both entries and identifier bytes so app code never
 /// has to raise a quota for generated shim work.
 fn typeScanQuota(comptime T: type) u32 {
-    const fields = switch (@typeInfo(T)) {
-        .@"struct" => |info| info.fields,
-        .@"union" => |info| info.fields,
-        .@"enum" => |info| info.fields,
+    const field_names = switch (@typeInfo(T)) {
+        .@"struct" => |info| info.field_names,
+        .@"union" => |info| info.field_names,
+        .@"enum" => |info| info.field_names,
         else => return 2_000,
     };
     var name_bytes: u64 = 0;
-    for (fields) |field| name_bytes += field.name.len;
-    const quota: u64 = 100_000 + @as(u64, fields.len) * 1_024 + name_bytes * 256;
+    for (field_names) |field_name| name_bytes += field_name.len;
+    const quota: u64 = 100_000 + @as(u64, field_names.len) * 1_024 + name_bytes * 256;
     return @intCast(@min(quota, std.math.maxInt(u32)));
 }
 
@@ -151,8 +151,8 @@ fn encodeInto(comptime T: type, value: T, allocator: std.mem.Allocator, out: *st
             // member INDEX, never the enum's numeric value (mirror
             // enums make them equal; the codec must not rely on it).
             const member_index: u32 = blk: {
-                inline for (info.fields, 0..) |field, field_index| {
-                    if (value == @field(T, field.name)) break :blk @intCast(field_index);
+                inline for (info.field_names, 0..) |field_name, field_index| {
+                    if (value == @field(T, field_name)) break :blk @intCast(field_index);
                 }
                 unreachable;
             };
@@ -180,8 +180,8 @@ fn encodeInto(comptime T: type, value: T, allocator: std.mem.Allocator, out: *st
             else => @compileError("the canonical value encoding has no form for " ++ @typeName(T)),
         },
         .@"struct" => |info| {
-            inline for (info.fields) |field| {
-                try encodeInto(field.type, @field(value, field.name), allocator, out);
+            inline for (info.field_names, info.field_types) |field_name, field_type| {
+                try encodeInto(field_type, @field(value, field_name), allocator, out);
             }
         },
         .@"union" => |info| {
@@ -192,8 +192,8 @@ fn encodeInto(comptime T: type, value: T, allocator: std.mem.Allocator, out: *st
                     // index rides the wire, never the tag's numeric
                     // value.
                     const arm_index: u8 = comptime blk: {
-                        for (info.fields, 0..) |field, field_index| {
-                            if (std.mem.eql(u8, field.name, @tagName(tag))) break :blk @intCast(field_index);
+                        for (info.field_names, 0..) |field_name, field_index| {
+                            if (std.mem.eql(u8, field_name, @tagName(tag))) break :blk @intCast(field_index);
                         }
                         unreachable;
                     };
@@ -261,13 +261,13 @@ pub fn decode(comptime T: type, reader: *Reader, allocator: std.mem.Allocator) T
         },
         .@"enum" => |info| {
             const member_index = reader.int(u32);
-            if (member_index >= info.fields.len) {
+            if (member_index >= info.field_names.len) {
                 @panic("a core buffer carries an enum member index past the declared members — the compiled core and the generated shim disagree about the contract; rebuild the app");
             }
             // Positional: index into declaration order, never the
             // enum's numeric value.
-            inline for (info.fields, 0..) |field, field_index| {
-                if (member_index == field_index) return @field(T, field.name);
+            inline for (info.field_names, 0..) |field_name, field_index| {
+                if (member_index == field_index) return @field(T, field_name);
             }
             unreachable;
         },
@@ -300,18 +300,18 @@ pub fn decode(comptime T: type, reader: *Reader, allocator: std.mem.Allocator) T
         },
         .@"struct" => |info| {
             var out: T = undefined;
-            inline for (info.fields) |field| {
-                @field(out, field.name) = decode(field.type, reader, allocator);
+            inline for (info.field_names, info.field_types) |field_name, field_type| {
+                @field(out, field_name) = decode(field_type, reader, allocator);
             }
             return out;
         },
         .@"union" => |info| {
             comptime std.debug.assert(info.tag_type != null);
             const arm = reader.take(1)[0];
-            inline for (info.fields, 0..) |field, index| {
+            inline for (info.field_names, info.field_types, 0..) |field_name, field_type, index| {
                 if (arm == index) {
-                    if (field.type == void) return @unionInit(T, field.name, {});
-                    return @unionInit(T, field.name, decode(field.type, reader, allocator));
+                    if (field_type == void) return @unionInit(T, field_name, {});
+                    return @unionInit(T, field_name, decode(field_type, reader, allocator));
                 }
             }
             @panic("a core buffer carries a union arm index past the declared arms — the compiled core and the generated shim disagree about the contract; rebuild the app");

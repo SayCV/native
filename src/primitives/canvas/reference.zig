@@ -1076,7 +1076,7 @@ fn referenceMemoHashValue(hasher: *std.hash.Wyhash, value: anytype) void {
             }
         },
         .@"struct" => |info| {
-            inline for (info.fields) |field| referenceMemoHashValue(hasher, @field(value, field.name));
+            inline for (info.field_names) |field_name| referenceMemoHashValue(hasher, @field(value, field_name));
         },
         .@"union" => {
             switch (value) {
@@ -1127,7 +1127,6 @@ fn referenceScaleCommand(command: RenderCommand, scale: f32) RenderCommand {
 fn referenceScaleRect(rect: geometry.RectF, scale: f32) geometry.RectF {
     return geometry.RectF.init(rect.x * scale, rect.y * scale, rect.width * scale, rect.height * scale);
 }
-
 
 fn referencePixelCenter(x: usize, y: usize) geometry.PointF {
     return geometry.PointF.init(@as(f32, @floatFromInt(x)) + 0.5, @as(f32, @floatFromInt(y)) + 0.5);

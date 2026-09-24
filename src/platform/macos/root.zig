@@ -478,7 +478,7 @@ extern fn native_sdk_appkit_set_tray_callback(host: *AppKitHost, callback: AppKi
 /// icon from the bundle's .icns (already masked at package time), and
 /// prebuilt .icns paths ship untouched in every mode.
 fn devDockIconNeedsMask(path: []const u8) bool {
-    if (builtin.mode != .Debug) return false;
+    if (builtin.mode != .debug) return false;
     return app_icon.sourceKindForPath(path) != null;
 }
 

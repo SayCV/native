@@ -772,7 +772,7 @@ fn scriptcProfileOptimization(b: *std.Build, dep: *std.Build.Dependency, optimiz
                 dir = std.fs.path.dirname(dir) orelse return null;
                 continue;
             };
-            return if (optimize == .Debug) "dev" else "release";
+            return if (optimize == .debug) "dev" else "release";
         }
         dir = std.fs.path.dirname(dir) orelse return null;
     }
@@ -1328,7 +1328,7 @@ fn corewireExe(b: *std.Build, dep: *std.Build.Dependency) *std.Build.Step.Compil
     const mod = b.createModule(.{
         .root_source_file = dep.path("tools/corewire/main.zig"),
         .target = b.graph.host,
-        .optimize = .Debug,
+        .optimize = .debug,
     });
     return b.addExecutable(.{
         .name = "corewire",
@@ -1540,7 +1540,7 @@ pub const MobileTsCore = struct {
 pub fn addMobileLib(b: *std.Build, dep: *std.Build.Dependency, options: MobileLibOptions) void {
     const target = nativeSdkTarget(b);
     const optimize_request = b.option(std.builtin.OptimizeMode, "optimize", "Prioritize performance, safety, or binary size");
-    const optimize = exampleOptimizeMode(b, optimize_request, .Debug);
+    const optimize = exampleOptimizeMode(b, optimize_request, .debug);
     addMobileLibWithTarget(b, dep, target, optimize, options);
 }
 
@@ -1689,7 +1689,7 @@ pub fn addApp(b: *std.Build, dep: *std.Build.Dependency, app_options: AppOptions
 pub fn addAppArtifacts(b: *std.Build, dep: *std.Build.Dependency, app_options: AppOptions) AppArtifacts {
     const target = nativeSdkTarget(b);
     const optimize_request = b.option(std.builtin.OptimizeMode, "optimize", "Prioritize performance, safety, or binary size");
-    const optimize = exampleOptimizeMode(b, optimize_request, .Debug);
+    const optimize = exampleOptimizeMode(b, optimize_request, .debug);
     const app_optimize = exampleOptimizeMode(b, optimize_request, .ReleaseFast);
     const build_trace = b.option(bool, "build-trace", "Trace generated TypeScript ABI artifacts and cache reuse") orelse false;
     const scriptc_optimization = scriptcProfileOptimization(b, dep, app_optimize);
@@ -1856,7 +1856,7 @@ pub fn addAppArtifacts(b: *std.Build, dep: *std.Build.Dependency, app_options: A
         });
         const link_mod = b.createModule(.{ .target = target, .optimize = app_optimize });
         link_mod.addObject(app_code);
-        if (app_optimize == .Debug) link_mod.addObject(markupDataObject(b, target, app_optimize, stage.markup_c));
+        if (app_optimize == .debug) link_mod.addObject(markupDataObject(b, target, app_optimize, stage.markup_c));
         // Object dependencies propagate framework/system-library NAMES, but
         // Zig does not propagate the search paths or rpaths recorded on the
         // module that produced an object. Restate those path-only facts on
@@ -1890,7 +1890,7 @@ pub fn addAppArtifacts(b: *std.Build, dep: *std.Build.Dependency, app_options: A
     // on GUI exes (handles inherit; only console AUTO-allocation is
     // gated by the subsystem), so automation harnesses that pipe
     // `app.exe > log 2>&1` keep their logs either way.
-    if (target.result.os.tag == .windows and app_optimize != .Debug) {
+    if (target.result.os.tag == .windows and app_optimize != .debug) {
         exe.subsystem = .windows;
     }
     linkPlatform(b, dep, target, app_mod, exe, selected_platform, web_engine, web_layer, cef_dir, cef_auto_install);
@@ -1927,7 +1927,7 @@ pub fn addAppArtifacts(b: *std.Build, dep: *std.Build.Dependency, app_options: A
     else
         app_mod;
     if (ts_stage) |stage| {
-        if (optimize == .Debug) test_app_mod.addObject(markupDataObject(b, target, optimize, stage.markup_c));
+        if (optimize == .debug) test_app_mod.addObject(markupDataObject(b, target, optimize, stage.markup_c));
     }
     const tests = b.addTest(.{ .root_module = test_app_mod, .use_llvm = useLlvmWorkaround(target) });
     const test_step = b.step("test", "Run tests");
@@ -2143,7 +2143,7 @@ fn appModule(b: *std.Build, dep: *std.Build.Dependency, target: std.Build.Resolv
         // data object. Supplying this generated module in Debug would put
         // the authored root back into the app-code dependency graph even
         // though the runner's comptime branch never imports it.
-        if (optimize != .Debug) {
+        if (optimize != .debug) {
             app_mod.addImport("app_markup_root", b.createModule(.{
                 .root_source_file = stage.app_markup_root,
                 .target = target,

@@ -22,8 +22,8 @@ pub fn viewWindowIdFromJson(payload: []const u8, default_window_id: platform.Win
 }
 
 pub fn viewKindFromString(value: []const u8) ?platform.ViewKind {
-    inline for (@typeInfo(platform.ViewKind).@"enum".fields) |field| {
-        if (std.mem.eql(u8, value, field.name)) return @field(platform.ViewKind, field.name);
+    inline for (@typeInfo(platform.ViewKind).@"enum".field_names) |field_name| {
+        if (std.mem.eql(u8, value, field_name)) return @field(platform.ViewKind, field_name);
     }
     if (std.mem.eql(u8, value, "titlebarAccessory")) return .titlebar_accessory;
     if (std.mem.eql(u8, value, "iconButton")) return .icon_button;
@@ -37,8 +37,8 @@ pub fn viewKindFromString(value: []const u8) ?platform.ViewKind {
 }
 
 pub fn windowTitlebarStyleFromString(value: []const u8) ?platform.WindowTitlebarStyle {
-    inline for (@typeInfo(platform.WindowTitlebarStyle).@"enum".fields) |field| {
-        if (std.mem.eql(u8, value, field.name)) return @field(platform.WindowTitlebarStyle, field.name);
+    inline for (@typeInfo(platform.WindowTitlebarStyle).@"enum".field_names) |field_name| {
+        if (std.mem.eql(u8, value, field_name)) return @field(platform.WindowTitlebarStyle, field_name);
     }
     if (std.mem.eql(u8, value, "hiddenInset")) return .hidden_inset;
     if (std.mem.eql(u8, value, "hiddenInsetTall")) return .hidden_inset_tall;
@@ -69,43 +69,43 @@ pub fn gpuSurfaceOptionsFromJson(payload: []const u8, storage: *json.StringStora
 }
 
 fn gpuSurfaceBackendFromString(value: []const u8) ?platform.GpuSurfaceBackend {
-    inline for (@typeInfo(platform.GpuSurfaceBackend).@"enum".fields) |field| {
-        if (std.mem.eql(u8, value, field.name)) return @field(platform.GpuSurfaceBackend, field.name);
+    inline for (@typeInfo(platform.GpuSurfaceBackend).@"enum".field_names) |field_name| {
+        if (std.mem.eql(u8, value, field_name)) return @field(platform.GpuSurfaceBackend, field_name);
     }
     return null;
 }
 
 fn gpuSurfacePixelFormatFromString(value: []const u8) ?platform.GpuSurfacePixelFormat {
-    inline for (@typeInfo(platform.GpuSurfacePixelFormat).@"enum".fields) |field| {
-        if (std.mem.eql(u8, value, field.name)) return @field(platform.GpuSurfacePixelFormat, field.name);
+    inline for (@typeInfo(platform.GpuSurfacePixelFormat).@"enum".field_names) |field_name| {
+        if (std.mem.eql(u8, value, field_name)) return @field(platform.GpuSurfacePixelFormat, field_name);
     }
     return null;
 }
 
 fn gpuSurfacePresentModeFromString(value: []const u8) ?platform.GpuSurfacePresentMode {
-    inline for (@typeInfo(platform.GpuSurfacePresentMode).@"enum".fields) |field| {
-        if (std.mem.eql(u8, value, field.name)) return @field(platform.GpuSurfacePresentMode, field.name);
+    inline for (@typeInfo(platform.GpuSurfacePresentMode).@"enum".field_names) |field_name| {
+        if (std.mem.eql(u8, value, field_name)) return @field(platform.GpuSurfacePresentMode, field_name);
     }
     return null;
 }
 
 fn gpuSurfaceAlphaModeFromString(value: []const u8) ?platform.GpuSurfaceAlphaMode {
-    inline for (@typeInfo(platform.GpuSurfaceAlphaMode).@"enum".fields) |field| {
-        if (std.mem.eql(u8, value, field.name)) return @field(platform.GpuSurfaceAlphaMode, field.name);
+    inline for (@typeInfo(platform.GpuSurfaceAlphaMode).@"enum".field_names) |field_name| {
+        if (std.mem.eql(u8, value, field_name)) return @field(platform.GpuSurfaceAlphaMode, field_name);
     }
     return null;
 }
 
 fn gpuSurfaceColorSpaceFromString(value: []const u8) ?platform.GpuSurfaceColorSpace {
-    inline for (@typeInfo(platform.GpuSurfaceColorSpace).@"enum".fields) |field| {
-        if (std.mem.eql(u8, value, field.name)) return @field(platform.GpuSurfaceColorSpace, field.name);
+    inline for (@typeInfo(platform.GpuSurfaceColorSpace).@"enum".field_names) |field_name| {
+        if (std.mem.eql(u8, value, field_name)) return @field(platform.GpuSurfaceColorSpace, field_name);
     }
     return null;
 }
 
 pub fn platformFeatureFromString(value: []const u8) ?platform.PlatformFeature {
-    inline for (@typeInfo(platform.PlatformFeature).@"enum".fields) |field| {
-        if (std.mem.eql(u8, value, field.name)) return @field(platform.PlatformFeature, field.name);
+    inline for (@typeInfo(platform.PlatformFeature).@"enum".field_names) |field_name| {
+        if (std.mem.eql(u8, value, field_name)) return @field(platform.PlatformFeature, field_name);
     }
     if (std.mem.eql(u8, value, "mainWebView")) return .main_webview;
     if (std.mem.eql(u8, value, "childWebViews")) return .child_webviews;

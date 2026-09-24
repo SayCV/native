@@ -191,7 +191,7 @@ pub const CompiledHabitsView = canvas.CompiledMarkupView(Model, Msg, habits_mark
 /// Debug builds keep the runtime markup engine for hot reload; release
 /// builds compile it out entirely (`zig build` produces a release app —
 /// grep it for parser diagnostics to confirm nothing survived).
-const dev_markup_reload = builtin.mode == .Debug;
+const dev_markup_reload = builtin.mode == .debug;
 
 const HabitsApp = native_sdk.UiAppWithFeatures(Model, Msg, .{ .runtime_markup = dev_markup_reload });
 

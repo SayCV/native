@@ -1305,12 +1305,12 @@ test "the reflect tag vocabulary never drifts from canvas.TextInputEvent" {
         }
         try testing.expect(found);
     }
-    const direction_fields = @typeInfo(canvas.TextCaretDirection).@"enum".fields;
-    try testing.expectEqual(reflect.text_caret_direction_members.len, direction_fields.len);
-    inline for (direction_fields) |field| {
+    const direction_field_names = @typeInfo(canvas.TextCaretDirection).@"enum".field_names;
+    try testing.expectEqual(reflect.text_caret_direction_members.len, direction_field_names.len);
+    inline for (direction_field_names) |field_name| {
         var found = false;
         for (reflect.text_caret_direction_members) |member| {
-            if (std.mem.eql(u8, member, field.name)) found = true;
+            if (std.mem.eql(u8, member, field_name)) found = true;
         }
         try testing.expect(found);
     }

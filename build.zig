@@ -151,7 +151,7 @@ test "Debug TypeScript root markup stays outside the staged app module" {
         source,
         "_ = release_markup.addCopyFile(b.path(appPath(b, app_root, \"src/app.native\")), \"app.native\");",
     ) != null);
-    try std.testing.expect(std.mem.indexOf(u8, source, "if (optimize != .Debug)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, source, "if (optimize != .debug)") != null);
 }
 
 test "native check preserves the app markup root for component files" {

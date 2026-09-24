@@ -710,7 +710,7 @@ pub const Msg = union(enum) {
     };
 };
 
-const dev_markup_reload = builtin.mode == .Debug;
+const dev_markup_reload = builtin.mode == .debug;
 pub const BrowserSession = struct {
     open: bool = false,
     handled_picker_serial: u64 = 0,

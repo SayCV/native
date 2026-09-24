@@ -77,7 +77,7 @@ pub const panic = std.debug.FullPanic(native_sdk.debug.capturePanic);
 pub const Model = core.Model;
 pub const Msg = core.Msg;
 
-const dev = builtin.mode == .Debug;
+const dev = builtin.mode == .debug;
 const Adapter = native_sdk.TsUiAppWithFeatures(core, .{ .runtime_markup = dev });
 const App = Adapter.App;
 

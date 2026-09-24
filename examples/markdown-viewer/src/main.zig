@@ -797,7 +797,7 @@ pub const CompiledViewerView = canvas.CompiledMarkupView(Model, Msg, viewer_mark
 
 /// Debug builds keep the runtime markup engine for hot reload; release
 /// builds compile it out entirely.
-const dev_markup_reload = builtin.mode == .Debug;
+const dev_markup_reload = builtin.mode == .debug;
 
 pub fn initialModel() Model {
     var model = Model{};
