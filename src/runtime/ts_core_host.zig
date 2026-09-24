@@ -3281,8 +3281,8 @@ pub fn TsCoreHost(comptime core: type) type {
         fn reconcileSubscriptions(fx: *Fx) void {
             if (comptime !has_subscriptions) return;
             const subs = core.subscriptions(model_root);
-            var seen_timers = [_]bool{false} ** timers.len;
-            var seen_db = [_]bool{false} ** dbs.len;
+            var seen_timers = @as([timers.len]bool, @splat(@as(bool, false)));
+            var seen_db = @as([dbs.len]bool, @splat(@as(bool, false)));
 
             // Free live DB slots whose wire keys disappeared before the pass
             // allocates replacements. Otherwise two independently valid sets
@@ -3409,7 +3409,7 @@ pub fn TsCoreHost(comptime core: type) type {
         /// Reconciliation uses this pre-pass to retire genuinely stale slots
         /// before it allocates any new ones.
         fn retainedDbSubscriptions(subs: []const u8) [runtime_effects.max_db_effects]bool {
-            var retained = [_]bool{false} ** runtime_effects.max_db_effects;
+            var retained = @as([runtime_effects.max_db_effects]bool, @splat(@as(bool, false)));
             var at: usize = 0;
             while (at < subs.len) switch (takeByte(subs, &at)) {
                 0x01 => {

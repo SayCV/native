@@ -1130,7 +1130,7 @@ fn ptySessionUpdate(model: *PtySessionModel, msg: PtySessionMsg, fx: *PtySession
         // model and the fingerprint.
         .type_oversized => model.recordWriteVerdict(fx.ptyWrite(
             session_pty_key,
-            &(comptime [_]u8{'z'} ** (effects_mod.max_effect_pty_write_bytes + 1)),
+            &(comptime @as([(effects_mod.max_effect_pty_write_bytes + 1)]u8, @splat(@as(u8, 'z')))),
         )),
         .event => |event| model.record(event),
     }

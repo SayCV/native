@@ -29,7 +29,7 @@ const Card = struct {
     id: u32,
     done: bool = false,
     weight: f32 = 1,
-    label_storage: [16]u8 = [_]u8{0} ** 16,
+    label_storage: [16]u8 = @as([16]u8, @splat(@as(u8, 0))),
     label_len: usize = 0,
 
     pub fn label(card: *const Card) []const u8 {

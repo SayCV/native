@@ -442,7 +442,7 @@ pub fn Ui(comptime Msg: type) type {
         virtual_extent_source: ?VirtualExtentSourceFn = null,
         /// The windowed virtual lists this build declared (`virtualList`),
         /// for the app loop's coverage check and scroll re-derivation.
-        virtual_window_records: [max_virtual_windows]VirtualWindowRecord = [_]VirtualWindowRecord{.{}} ** max_virtual_windows,
+        virtual_window_records: [max_virtual_windows]VirtualWindowRecord = @as([max_virtual_windows]VirtualWindowRecord, @splat(@as(VirtualWindowRecord, .{}))),
         virtual_window_record_count: usize = 0,
         /// Widget provenance collector (write-back's read half): when set,
         /// the markup engines stamp each built node's source, and

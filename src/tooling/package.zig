@@ -3855,7 +3855,7 @@ test "package refuses an exclude against a resolved Chromium engine" {
 /// carries. The COFF machine field stays zero, which the arch sniff
 /// reads as x64.
 fn testWebLayerPeBytes() [0x80 + "WebView2Loader.dll".len * 2]u8 {
-    var bytes = [_]u8{0} ** (0x80 + "WebView2Loader.dll".len * 2);
+    var bytes = @as([(0x80 + "WebView2Loader.dll".len * 2)]u8, @splat(@as(u8, 0)));
     bytes[0] = 'M';
     bytes[1] = 'Z';
     std.mem.writeInt(u32, bytes[0x3c..0x40], 0x40, .little);
@@ -3871,7 +3871,7 @@ fn testWebLayerPeBytes() [0x80 + "WebView2Loader.dll".len * 2]u8 {
 /// subsystem tests: MZ + PE + a COFF header declaring a 240-byte
 /// optional header, with the Subsystem field set as asked.
 fn testSubsystemPeBytes(subsystem: u16) [0x200]u8 {
-    var bytes = [_]u8{0} ** 0x200;
+    var bytes = @as([0x200]u8, @splat(@as(u8, 0)));
     bytes[0] = 'M';
     bytes[1] = 'Z';
     std.mem.writeInt(u32, bytes[0x3c..0x40], 0x40, .little);
@@ -3930,7 +3930,7 @@ test "a PE offset past the header ceiling proves nothing and allocates nothing" 
     try cwd.deleteTree(std.testing.io, root);
     defer cwd.deleteTree(std.testing.io, root) catch {};
     try cwd.createDirPath(std.testing.io, root);
-    var bytes = [_]u8{0} ** 0x40;
+    var bytes = @as([0x40]u8, @splat(@as(u8, 0)));
     bytes[0] = 'M';
     bytes[1] = 'Z';
     std.mem.writeInt(u32, bytes[0x3c..0x40], 8 * 1024 * 1024, .little);

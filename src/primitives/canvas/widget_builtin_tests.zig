@@ -2559,7 +2559,7 @@ test "built-in component catalog covers house component set" {
         try std.testing.expectEqualStrings(expected, actual);
     }
 
-    var seen = [_]bool{false} ** enum_len;
+    var seen = @as([enum_len]bool, @splat(@as(bool, false)));
     for (builtin_component_kinds, 0..) |kind, index| {
         const descriptor = builtinComponentDescriptor(kind);
         try std.testing.expectEqual(kind, descriptor.kind);

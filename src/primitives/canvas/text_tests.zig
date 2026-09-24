@@ -933,7 +933,7 @@ test "text bounds and reference renderer honor per-run wrapping" {
     try std.testing.expectEqual(@as(usize, 1), render_plan.commandCount());
     try expectRectApprox(geometry.RectF.init(-1, -3.5, 11.61, 52.5), render_plan.commands[0].bounds);
 
-    var pixels: [16 * 32 * 4]u8 = [_]u8{0} ** (16 * 32 * 4);
+    var pixels: [16 * 32 * 4]u8 = @as([(16 * 32 * 4)]u8, @splat(@as(u8, 0)));
     const surface = try ReferenceRenderSurface.init(16, 32, &pixels);
     try surface.renderPass(.{
         .commands = render_plan.commands,
@@ -1341,7 +1341,7 @@ test "text layout maps caret selection and points across shaped glyph lines" {
     } }};
     var render_commands: [1]RenderCommand = undefined;
     const render_plan = try (DisplayList{ .commands = &commands }).renderPlan(&render_commands);
-    var pixels: [24 * 32 * 4]u8 = [_]u8{0} ** (24 * 32 * 4);
+    var pixels: [24 * 32 * 4]u8 = @as([(24 * 32 * 4)]u8, @splat(@as(u8, 0)));
     const surface = try ReferenceRenderSurface.init(24, 32, &pixels);
     try surface.renderPass(.{
         .commands = render_plan.commands,
@@ -2077,8 +2077,8 @@ fn tailInkDroppedByBoundsClip(comptime body: []const u8, text_layout: ?TextLayou
 
     const width = 360;
     const height = 40;
-    var clipped_pixels: [width * height * 4]u8 = [_]u8{0} ** (width * height * 4);
-    var unclipped_pixels: [width * height * 4]u8 = [_]u8{0} ** (width * height * 4);
+    var clipped_pixels: [width * height * 4]u8 = @as([(width * height * 4)]u8, @splat(@as(u8, 0)));
+    var unclipped_pixels: [width * height * 4]u8 = @as([(width * height * 4)]u8, @splat(@as(u8, 0)));
 
     const clipped = try ReferenceRenderSurface.init(width, height, &clipped_pixels);
     try clipped.renderPass(.{

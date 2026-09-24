@@ -73,8 +73,8 @@ pub const SessionRecorder = struct {
     /// journal's WHOLE representation of the interaction (see
     /// `stageEvent`).
     suppress_owner_depth: ?usize = null,
-    staged_lens: [journal.max_session_event_depth]usize = [_]usize{0} ** journal.max_session_event_depth,
-    staged_suppressed: [journal.max_session_event_depth]bool = [_]bool{false} ** journal.max_session_event_depth,
+    staged_lens: [journal.max_session_event_depth]usize = @as([journal.max_session_event_depth]usize, @splat(@as(usize, 0))),
+    staged_suppressed: [journal.max_session_event_depth]bool = @as([journal.max_session_event_depth]bool, @splat(@as(bool, false))),
     staged: [journal.max_session_event_depth][journal.max_session_event_bytes]u8 = undefined,
     /// Encode scratch for effect payloads (up to a whole file read).
     effect_buffer: [journal.max_session_record_bytes]u8 = undefined,

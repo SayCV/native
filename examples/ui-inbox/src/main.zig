@@ -60,7 +60,7 @@ pub const Filter = enum { all, active, done };
 
 pub const Task = struct {
     id: u32,
-    title_storage: [max_task_title]u8 = [_]u8{0} ** max_task_title,
+    title_storage: [max_task_title]u8 = @as([max_task_title]u8, @splat(@as(u8, 0))),
     title_len: usize = 0,
     done: bool = false,
 

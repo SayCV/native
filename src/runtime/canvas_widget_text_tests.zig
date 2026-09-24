@@ -3911,7 +3911,7 @@ test "a widget text budget overflow on input degrades instead of exiting" {
     // Fill the view's widget text storage to within 512 bytes of the
     // budget, so a 510-byte insert overflows the storage rewrite while
     // still fitting the edit-apply scratch.
-    const filler = [_]u8{'a'} ** (runtime_module.max_canvas_widget_text_bytes_per_view - 512);
+    const filler = @as([(runtime_module.max_canvas_widget_text_bytes_per_view - 512)]u8, @splat(@as(u8, 'a')));
     const textarea = canvas.Widget{
         .id = 2,
         .kind = .textarea,
@@ -3943,7 +3943,7 @@ test "a widget text budget overflow on input degrades instead of exiting" {
     var retained = try harness.runtime.canvasWidgetLayout(1, "canvas");
     try std.testing.expectEqual(filler.len, retained.nodes[1].widget.text.len);
 
-    const burst = [_]u8{'b'} ** 510;
+    const burst = @as([510]u8, @splat(@as(u8, 'b')));
     try harness.runtime.dispatchPlatformEvent(app, .{ .gpu_surface_input = .{
         .window_id = 1,
         .label = "canvas",
@@ -3987,7 +3987,7 @@ test "a widget text budget overflow on input degrades instead of exiting" {
     retained = try harness.runtime.canvasWidgetLayout(1, "canvas");
     try std.testing.expectEqual(filler.len, retained.nodes[1].widget.text.len);
 
-    const blocker = [_]u8{'c'} ** 505;
+    const blocker = @as([505]u8, @splat(@as(u8, 'c')));
     const blocking_text = canvas.Widget{
         .id = 3,
         .kind = .text,

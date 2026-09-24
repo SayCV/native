@@ -1064,7 +1064,7 @@ test "the text preflight accounts for bytes earlier widgets already consumed" {
     var builder = canvas.Builder.init(&commands);
     // Pre-consume all but 2 bytes of the store, as an earlier widget
     // would.
-    const filler = [_]u8{'x'} ** (canvas.max_display_list_text_bytes - 2);
+    const filler = @as([(canvas.max_display_list_text_bytes - 2)]u8, @splat(@as(u8, 'x')));
     _ = try builder.allocTextBytes(&filler);
 
     try grid_model.paint(baseGrid(&rows), &builder, .{

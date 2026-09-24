@@ -211,7 +211,7 @@ pub const Runtime = struct {
     view_count: usize = 0,
     webviews: [platform.max_webviews]RuntimeWebView = undefined,
     webview_count: usize = 0,
-    status_items: [platform.max_status_items]RuntimeStatusItem = [_]RuntimeStatusItem{.{}} ** platform.max_status_items,
+    status_items: [platform.max_status_items]RuntimeStatusItem = @as([platform.max_status_items]RuntimeStatusItem, @splat(@as(RuntimeStatusItem, .{}))),
     status_item_count: usize = 0,
     /// Audio playback mirror for the automation snapshot, stamped by
     /// the ui-app layer whenever a dispatch or effect drain may have
@@ -300,7 +300,7 @@ pub const Runtime = struct {
     loaded_source: ?platform.WebViewSource = null,
     loaded_source_storage: RuntimeSourceStorage = .{},
     /// Degraded dispatch errors, oldest first (see `max_dispatch_errors`).
-    dispatch_errors: [max_dispatch_errors]DispatchError = [_]DispatchError{.{}} ** max_dispatch_errors,
+    dispatch_errors: [max_dispatch_errors]DispatchError = @as([max_dispatch_errors]DispatchError, @splat(@as(DispatchError, .{}))),
     dispatch_error_len: usize = 0,
     /// See `DispatchErrorPolicy`: production loops always degrade;
     /// the TestHarness propagates so capacity errors fail tests instead
@@ -320,7 +320,7 @@ pub const Runtime = struct {
     /// snapshot's `frame_profile` line. Larger than the small-default
     /// copy bound, so `initAt` assigns it explicitly.
     frame_profile: runtime_frame_profile.FrameProfile = .{},
-    async_bridge_responses: [max_async_bridge_responses]AsyncBridgeResponseSlot = [_]AsyncBridgeResponseSlot{.{}} ** max_async_bridge_responses,
+    async_bridge_responses: [max_async_bridge_responses]AsyncBridgeResponseSlot = @as([max_async_bridge_responses]AsyncBridgeResponseSlot, @splat(@as(AsyncBridgeResponseSlot, .{}))),
     automation_windows: [automation.snapshot.max_windows]automation.snapshot.Window = undefined,
     /// Snapshot-side storage for the frame profile's per-stage stats
     /// (the snapshot Input only references runtime-owned memory).
@@ -410,8 +410,8 @@ pub const Runtime = struct {
     canvas_widget_reconcile_text_bytes: [canvas_limits.max_canvas_widget_text_bytes_per_view]u8 = undefined,
     canvas_widget_invalidations_scratch: [canvas_limits.max_canvas_widget_invalidations_per_view]canvas.WidgetInvalidation = undefined,
     canvas_widget_copy_scratch: runtime_canvas_widget_runtime.CanvasWidgetCopyScratch = undefined,
-    canvas_widget_display_list_refresh_pending: [platform.max_views]bool = [_]bool{false} ** platform.max_views,
-    canvas_widget_accessibility_publish_pending: [platform.max_views]bool = [_]bool{false} ** platform.max_views,
+    canvas_widget_display_list_refresh_pending: [platform.max_views]bool = @as([platform.max_views]bool, @splat(@as(bool, false))),
+    canvas_widget_accessibility_publish_pending: [platform.max_views]bool = @as([platform.max_views]bool, @splat(@as(bool, false))),
     canvas_frame_render_commands: [max_canvas_commands_per_view]canvas.RenderCommand = undefined,
     canvas_frame_render_batches: [max_canvas_commands_per_view]canvas.RenderBatch = undefined,
     canvas_frame_pipeline_cache_entries: [max_canvas_pipelines_per_view]canvas.RenderPipelineCacheEntry = undefined,
@@ -447,7 +447,7 @@ pub const Runtime = struct {
     /// where an embedded pool at the budget would put 16 x 1 MiB =
     /// 16 MiB in EVERY Runtime, the media-texture-pool regression's
     /// twin.
-    canvas_image_entries: [canvas_limits.max_registered_canvas_images]runtime_canvas_images.CanvasImageEntry = [_]runtime_canvas_images.CanvasImageEntry{.{}} ** canvas_limits.max_registered_canvas_images,
+    canvas_image_entries: [canvas_limits.max_registered_canvas_images]runtime_canvas_images.CanvasImageEntry = @as([canvas_limits.max_registered_canvas_images]runtime_canvas_images.CanvasImageEntry, @splat(@as(runtime_canvas_images.CanvasImageEntry, .{}))),
     canvas_image_count: usize = 0,
     canvas_image_pixels: [canvas_limits.max_registered_canvas_images][]u8 = [_][]u8{&.{}} ** canvas_limits.max_registered_canvas_images,
     /// `ReferenceImage` scratch the frame planner hands to renderers
@@ -465,7 +465,7 @@ pub const Runtime = struct {
     /// producer existed). The cross-thread mailbox producers push into
     /// is process-lived module state, deliberately NOT here — a
     /// producer outliving this runtime must never reach runtime memory.
-    media_surface_entries: [canvas_limits.max_media_surface_channels]runtime_media_surface.MediaSurfaceTextureEntry = [_]runtime_media_surface.MediaSurfaceTextureEntry{.{}} ** canvas_limits.max_media_surface_channels,
+    media_surface_entries: [canvas_limits.max_media_surface_channels]runtime_media_surface.MediaSurfaceTextureEntry = @as([canvas_limits.max_media_surface_channels]runtime_media_surface.MediaSurfaceTextureEntry, @splat(@as(runtime_media_surface.MediaSurfaceTextureEntry, .{}))),
     media_surface_count: usize = 0,
     media_surface_pixels: [canvas_limits.max_media_surface_channels][]u8 = [_][]u8{&.{}} ** canvas_limits.max_media_surface_channels,
     /// Process-unique tag stamped on mailbox slots this runtime claims
@@ -481,7 +481,7 @@ pub const Runtime = struct {
     /// `ReferenceFont` scratch the frame planner hands to renderers, and
     /// the font-aware measure provider installed on first registration
     /// for platforms without host-side text measurement.
-    canvas_font_entries: [canvas_limits.max_registered_canvas_fonts]runtime_canvas_fonts.CanvasFontEntry = [_]runtime_canvas_fonts.CanvasFontEntry{.{}} ** canvas_limits.max_registered_canvas_fonts,
+    canvas_font_entries: [canvas_limits.max_registered_canvas_fonts]runtime_canvas_fonts.CanvasFontEntry = @as([canvas_limits.max_registered_canvas_fonts]runtime_canvas_fonts.CanvasFontEntry, @splat(@as(runtime_canvas_fonts.CanvasFontEntry, .{}))),
     canvas_font_count: usize = 0,
     canvas_font_faces: [canvas_limits.max_registered_canvas_fonts]canvas.font_ttf.Face = undefined,
     canvas_font_resources_scratch: [canvas_limits.max_registered_canvas_fonts]canvas.ReferenceFont = undefined,
@@ -611,13 +611,13 @@ pub const Runtime = struct {
             if (buffer.len != 0) self.owned_allocator.free(buffer.*);
             buffer.* = &.{};
         }
-        self.canvas_image_entries = [_]runtime_canvas_images.CanvasImageEntry{.{}} ** canvas_limits.max_registered_canvas_images;
+        self.canvas_image_entries = @as([canvas_limits.max_registered_canvas_images]runtime_canvas_images.CanvasImageEntry, @splat(@as(runtime_canvas_images.CanvasImageEntry, .{})));
         self.canvas_image_count = 0;
         for (&self.media_surface_pixels) |*buffer| {
             if (buffer.len != 0) self.owned_allocator.free(buffer.*);
             buffer.* = &.{};
         }
-        self.media_surface_entries = [_]runtime_media_surface.MediaSurfaceTextureEntry{.{}} ** canvas_limits.max_media_surface_channels;
+        self.media_surface_entries = @as([canvas_limits.max_media_surface_channels]runtime_media_surface.MediaSurfaceTextureEntry, @splat(@as(runtime_media_surface.MediaSurfaceTextureEntry, .{})));
         self.media_surface_count = 0;
     }
 
