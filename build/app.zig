@@ -781,7 +781,7 @@ fn scriptcProfileOptimization(b: *std.Build, dep: *std.Build.Dependency, optimiz
 /// The SDK dependency's real root, resolved the way both the toolchain
 /// check and its teaching name it.
 fn tsSdkRoot(allocator: std.mem.Allocator, io: std.Io, dep: *std.Build.Dependency) []const u8 {
-    const raw_root = dep.builder.build_root.path orelse ".";
+    const raw_root = dep.builder.root.root_dir.path orelse ".";
     return std.Io.Dir.cwd().realPathFileAlloc(io, raw_root, allocator) catch raw_root;
 }
 
@@ -1353,7 +1353,7 @@ fn externalCoreSymbolName(b: *std.Build, app_name: []const u8) []const u8 {
 /// Declare every .ts file in an SDK-relative directory as a file input of
 /// the transpile step (the SDK library modules an app may import).
 fn addTsDirInputs(b: *std.Build, sdk_builder: *std.Build, transpile: *std.Build.Step.Run, dir_path: []const u8) void {
-    var dir = sdk_builder.build_root.handle.openDir(b.graph.io, dir_path, .{ .iterate = true }) catch return;
+    var dir = sdk_builder.root.root_dir.handle.openDir(b.graph.io, dir_path, .{ .iterate = true }) catch return;
     defer dir.close(b.graph.io);
     var it = dir.iterate();
     while (it.next(b.graph.io) catch null) |entry| {
