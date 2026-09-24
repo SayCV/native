@@ -201,7 +201,7 @@ fn collectTsWindowViews(b: *std.Build, app_root: []const u8) TsWindowViews {
     var sources: std.ArrayList(TsMarkupSource) = .empty;
     while (walker.next(b.graph.io) catch null) |entry| {
         if (entry.kind != .file or !std.mem.endsWith(u8, entry.path, ".native")) continue;
-        const normalized_path = b.dupe(entry.path);
+        const normalized_path = b.allocator.dupe(u8, entry.path) catch @panic("OOM");
         for (normalized_path) |*char| {
             if (char.* == '\\') char.* = '/';
         }
@@ -258,7 +258,7 @@ fn collectAppMarkupSources(b: *std.Build, app_root: []const u8, window_views: Ts
     var files: std.ArrayList(TsMarkupSource) = .empty;
     while (walker.next(b.graph.io) catch null) |entry| {
         if (entry.kind != .file or !std.mem.endsWith(u8, entry.path, ".native")) continue;
-        const normalized_path = b.dupe(entry.path);
+        const normalized_path = b.allocator.dupe(u8, entry.path) catch @panic("OOM");
         for (normalized_path) |*char| {
             if (char.* == '\\') char.* = '/';
         }
@@ -1341,7 +1341,7 @@ fn corewireExe(b: *std.Build, dep: *std.Build.Dependency) *std.Build.Step.Compil
 /// byte folded to '_'), the -o name the external compile builds under.
 fn externalCoreSymbolName(b: *std.Build, app_name: []const u8) []const u8 {
     const stem = b.fmt("{s}_core", .{app_name});
-    const sanitized = b.dupe(stem);
+    const sanitized = b.allocator.dupe(u8, stem) catch @panic("OOM");
     for (sanitized) |*char| {
         const ok = (char.* >= 'a' and char.* <= 'z') or (char.* >= 'A' and char.* <= 'Z') or
             (char.* >= '0' and char.* <= '9') or char.* == '_';
@@ -1387,7 +1387,7 @@ fn addAppCoreTsDirInputs(b: *std.Build, stage: *std.Build.Step.Run, src_path: []
     defer walker.deinit();
     while (walker.next(b.graph.io) catch null) |entry| {
         if (entry.kind != .file or !std.mem.endsWith(u8, entry.basename, ".ts") or std.mem.endsWith(u8, entry.basename, ".d.ts")) continue;
-        const normalized = b.dupe(entry.path);
+        const normalized = b.allocator.dupe(u8, entry.path) catch @panic("OOM");
         for (normalized) |*char| if (char.* == '\\') {
             char.* = '/';
         };
