@@ -44,8 +44,8 @@ fn hostApp(comptime Host: type, raw: ?*anyopaque) ?*Host {
 /// a `comptime` block in a static library's root module.
 pub fn exportMobileCApi(comptime Host: type) void {
     const Api = MobileCApi(Host);
-    inline for (@typeInfo(Api).@"struct".decls) |decl| {
-        @export(&@field(Api, decl.name), .{ .name = decl.name });
+    inline for (@typeInfo(Api).@"struct".decl_names) |decl| {
+        @export(&@field(Api, decl), .{ .name = decl });
     }
 }
 
